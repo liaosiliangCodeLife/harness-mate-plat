@@ -114,7 +114,9 @@ const historyReady = ref(false)
 const loadingEarlier = ref(false)
 const hasMore = ref(false)
 const listRef = ref<HTMLElement | null>(null)
+const listTrackRef = ref<HTMLElement | null>(null)
 const stickToBottom = ref(true)
+let listResizeObserver: ResizeObserver | null = null
 const replyStates = new Map<string, ReplyPersistState>()
 const reloadDetailAgent = inject(reloadDetailAgentKey, null)
 let stopRequested = false
@@ -204,6 +206,19 @@ const scrollToBottom = async (force = false) => {
     return
   }
   list.scrollTop = list.scrollHeight
+}
+
+// 图片或延迟渲染把内容撑高后，仍停在底部时再钉一次；用户上翻后不打断
+const pinListToBottom = () => {
+  const list = listRef.value
+  if (!list || !stickToBottom.value) {
+    return
+  }
+  list.scrollTop = list.scrollHeight
+}
+
+const onListMediaLoad = () => {
+  pinListToBottom()
 }
 
 const onListScroll = () => {
@@ -968,6 +983,16 @@ watch(
 
 onMounted(async () => {
   window.addEventListener('keydown', onFullscreenKeydown)
+  const list = listRef.value
+  if (list) {
+    list.addEventListener('load', onListMediaLoad, true)
+  }
+  if (listTrackRef.value) {
+    listResizeObserver = new ResizeObserver(() => {
+      pinListToBottom()
+    })
+    listResizeObserver.observe(listTrackRef.value)
+  }
   await loadHistory()
   historyReady.value = true
   start()
@@ -975,6 +1000,9 @@ onMounted(async () => {
 
 onUnmounted(() => {
   window.removeEventListener('keydown', onFullscreenKeydown)
+  listResizeObserver?.disconnect()
+  listResizeObserver = null
+  listRef.value?.removeEventListener('load', onListMediaLoad, true)
   clearGenerationIdle()
   stopOnlineHeartbeat()
   if (isFullscreen.value) {
@@ -1073,25 +1101,27 @@ onUnmounted(() => {
       </div>
       <div
         ref="listRef"
-        class="h-full overflow-y-auto flex flex-col gap-3 pr-1"
+        class="h-full overflow-y-auto pr-1"
         @scroll="onListScroll"
       >
-        <div v-if="historyError" class="text-center text-xs text-gray-500">
-          历史消息加载失败
-          <a-button type="text" size="mini" @click="loadHistory">重试</a-button>
+        <div ref="listTrackRef" class="flex flex-col gap-3">
+          <div v-if="historyError" class="text-center text-xs text-gray-500">
+            历史消息加载失败
+            <a-button type="text" size="mini" @click="loadHistory">重试</a-button>
+          </div>
+          <a-empty
+            v-else-if="!historyLoading && messages.length === 0 && !thinking"
+            description="暂无消息"
+            class="my-8"
+          />
+          <chat-bubble
+            v-for="item in visibleMessages"
+            :key="item.id"
+            :message="item"
+            :avatar="bubbleAvatar(item.role)"
+            :name="bubbleName(item.role)"
+          />
         </div>
-        <a-empty
-          v-else-if="!historyLoading && messages.length === 0 && !thinking"
-          description="暂无消息"
-          class="my-8"
-        />
-        <chat-bubble
-          v-for="item in visibleMessages"
-          :key="item.id"
-          :message="item"
-          :avatar="bubbleAvatar(item.role)"
-          :name="bubbleName(item.role)"
-        />
       </div>
     </div>
     <!-- 输入区：停止按钮和附件预览在胶囊上方；胶囊内右侧是上传、展开和发送 -->
