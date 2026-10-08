@@ -51,7 +51,7 @@
 如果接口需要授权，需要在 `headers` 中添加 `Authorization` ，并附加 `access_token` 即可完成授权登录，示例：
 
 ```json
-Authorization: Bearer <access_token>
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MTY0NTY3OTgsImlzcyI6ImxsbW9wcyIsInN1YiI6ImM5MDljMWRiLWIyMmUtNGZlNi04OGIyLWIyZTkxZWFiMWE3YiJ9.JDAtWDBBGiXa_XFihfopRe4Cz-RQ9_TAcno9w81tNbE
 ```
 
 ## 01. 文件上传模块
@@ -131,7 +131,7 @@ Authorization: Bearer <access_token>
 - **接口参数**：
 
   - 请求参数（`multipart/form-data`）：
-    - `file -> File`：需要上传的文件，图片也可以，最多支持上传一个文件，最大不能超过 15 MB。文档类型与 `/upload-files/file` 一致（txt、markdown、md、pdf、html、htm、xlsx、xls、doc、docx、csv），同时允许图片（jpg、jpeg、png、webp、gif、svg）。
+    - `file -> File`：需要上传的文件，图片也可以，最多支持上传一个文件。支持的文件类型为图片（jpg、jpeg、png、webp、gif、svg）、文档（txt、markdown、md、pdf、html、htm、xlsx、xls、doc、docx、csv）、音频（mp3、wav、m4a、aac、flac、ogg、oga、opus、amr、wma、aiff、mka）、视频（mp4、mov、m4v、avi、mkv、webm、flv、wmv、mpeg、mpg、ts、3gp）。大小限制：普通文件 16MB，音视频 1024MB。
     - `bot_id -> str`：智能体业务标识，不能为空。
     - `bot_key -> str`：网关密钥，必须与该智能体所属网关的 `gateway_key` 完全一致，不能为空。
     - `session_id -> str`：会话标识，必须与该智能体下未删除会话的 `ws_session_id` 完全一致，不能为空。
@@ -221,7 +221,7 @@ Authorization: Bearer <access_token>
   {
       "code": "success",
       "data": {
-          "access_token": "<access_token>",
+          "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
           "expire_at": 1730712246
       },
       "message": ""
@@ -260,7 +260,7 @@ Authorization: Bearer <access_token>
   {
       "code": "success",
       "data": {
-          "access_token": "<access_token>",
+          "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
           "expire_at": 1730712246
       },
       "message": ""

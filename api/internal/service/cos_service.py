@@ -15,10 +15,18 @@ from injector import inject
 from qcloud_cos import CosS3Client, CosConfig
 from werkzeug.datastructures import FileStorage
 
-from internal.entity.upload_file_entity import ALLOWED_IMAGE_EXTENSION, ALLOWED_DOCUMENT_EXTENSION
+from internal.entity.upload_file_entity import (
+    ALLOWED_AUDIO_EXTENSION,
+    ALLOWED_DOCUMENT_EXTENSION,
+    ALLOWED_IMAGE_EXTENSION,
+    ALLOWED_VIDEO_EXTENSION,
+)
 from internal.exception import FailException
 from internal.model import UploadFile, Account
 from .upload_file_service import UploadFileService
+
+# 流式摘要的读取块大小，避免把大文件整段读进内存
+_UPLOAD_CHUNK_SIZE = 8 * 1024 * 1024
 
 
 @inject
@@ -32,7 +40,13 @@ class CosService:
         # 1.提取文件扩展名并检测是否可以上传
         filename = file.filename
         extension = filename.rsplit(".", 1)[-1] if "." in filename else ""
-        if extension.lower() not in (ALLOWED_IMAGE_EXTENSION + ALLOWED_DOCUMENT_EXTENSION):
+        allowed_extensions = (
+            ALLOWED_IMAGE_EXTENSION
+            + ALLOWED_DOCUMENT_EXTENSION
+            + ALLOWED_AUDIO_EXTENSION
+            + ALLOWED_VIDEO_EXTENSION
+        )
+        if extension.lower() not in allowed_extensions:
             raise FailException(f"该.{extension}扩展的文件不允许上传")
         elif only_image and extension not in ALLOWED_IMAGE_EXTENSION:
             raise FailException(f"该.{extension}扩展的文件不支持上传，请上传正确的图片")
@@ -46,13 +60,23 @@ class CosService:
         now = datetime.now()
         upload_filename = f"{now.year}/{now.month:02d}/{now.day:02d}/{random_filename}"
 
-        # 4.流式读取上传的数据并将其上传到cos中
-        file_content = file.stream.read()
+        # 4.先取大小，再分块更新摘要，不把整段内容留在内存里
+        file.stream.seek(0, 2)
+        file_size = file.stream.tell()
+        file.stream.seek(0)
+        digest = hashlib.sha3_256()
+        while True:
+            chunk = file.stream.read(_UPLOAD_CHUNK_SIZE)
+            if not chunk:
+                break
+            digest.update(chunk)
+        file_hash = digest.hexdigest()
 
         try:
-            # 5.将数据上传到cos存储桶中
-            client.put_object(bucket, file_content, upload_filename)
-        except Exception as e:
+            # 5.把文件对象交给 COS，由 SDK 自己往外读
+            file.stream.seek(0)
+            client.put_object(Bucket=bucket, Body=file.stream, Key=upload_filename)
+        except Exception:
             raise FailException("上传文件失败，请稍后重试")
 
         # 6.创建upload_file记录
@@ -60,10 +84,10 @@ class CosService:
             account_id=account.id,
             name=filename,
             key=upload_filename,
-            size=len(file_content),
+            size=file_size,
             extension=extension,
             mime_type=file.mimetype,
-            hash=hashlib.sha3_256(file_content).hexdigest(),
+            hash=file_hash,
         )
 
     def download_file(self, key: str, target_file_path: str):

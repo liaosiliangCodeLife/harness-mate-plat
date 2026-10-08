@@ -8,11 +8,24 @@
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileRequired, FileAllowed, FileSize
 from marshmallow import Schema, fields, pre_dump
+from werkzeug.datastructures import FileStorage
 from wtforms import StringField
-from wtforms.validators import DataRequired
+from wtforms.validators import DataRequired, ValidationError
 
-from internal.entity.upload_file_entity import ALLOWED_DOCUMENT_EXTENSION, ALLOWED_IMAGE_EXTENSION
+from internal.entity.upload_file_entity import (
+    ALLOWED_AUDIO_EXTENSION,
+    ALLOWED_DOCUMENT_EXTENSION,
+    ALLOWED_IMAGE_EXTENSION,
+    ALLOWED_VIDEO_EXTENSION,
+)
 from internal.model import UploadFile
+
+# 免登录上传：普通文件 16MB，音频和视频 1024MB
+_OPEN_NORMAL_MAX_BYTES = 16 * 1024 * 1024
+_OPEN_MEDIA_MAX_BYTES = 1024 * 1024 * 1024
+_OPEN_MEDIA_EXTENSIONS = {
+    extension.lower() for extension in (ALLOWED_AUDIO_EXTENSION + ALLOWED_VIDEO_EXTENSION)
+}
 
 
 class UploadFileReq(FlaskForm):
@@ -58,15 +71,60 @@ class UploadImageReq(FlaskForm):
     ])
 
 
-# 免登录上传同时允许图片和文档，大小仍与文件上传接口一致
-_OPEN_UPLOAD_EXTENSIONS = ALLOWED_IMAGE_EXTENSION + ALLOWED_DOCUMENT_EXTENSION
+# 免登录上传允许图片、文档、音频、视频
+_OPEN_UPLOAD_EXTENSIONS = (
+    ALLOWED_IMAGE_EXTENSION
+    + ALLOWED_DOCUMENT_EXTENSION
+    + ALLOWED_AUDIO_EXTENSION
+    + ALLOWED_VIDEO_EXTENSION
+)
+
+
+class MediaFileSize:
+    """
+    * @Author Leon-liao
+    * @Function: MediaFileSize
+    * @Description //按扩展名分级校验免登录上传文件大小：音频和视频 1024MB，其它 16MB
+    * @Date :2026/10/08 19:46:00
+    * @Param: 无
+    * @return：校验器实例，供 FileField 调用
+    """
+
+    def __call__(self, form, field):
+        """
+        * @Author Leon-liao
+        * @Function: __call__(form, field)
+        * @Description //用文件流定位长度并按扩展名判断是否超限，不把文件内容读进内存
+        * @Date :2026/10/08 19:46:00
+        * @Param: form: FlaskForm 当前表单；field: FileField，field.data 为上传的 FileStorage
+        * @return：无。没有文件时直接返回，空文件仍由 FileRequired 提示「上传文件不能为空」；超限抛出 ValidationError
+        """
+        data = field.data
+        if not (isinstance(data, FileStorage) and data):
+            return
+
+        filename = data.filename or ""
+        extension = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+        if extension in _OPEN_MEDIA_EXTENSIONS:
+            max_size = _OPEN_MEDIA_MAX_BYTES
+            message = "音视频最大不能超过1024MB"
+        else:
+            max_size = _OPEN_NORMAL_MAX_BYTES
+            message = "上传文件最大不能超过16MB"
+
+        stream = data.stream
+        stream.seek(0, 2)
+        size = stream.tell()
+        stream.seek(0)
+        if size > max_size:
+            raise ValidationError(message)
 
 
 class OpenUploadFileReq(FlaskForm):
-    """免登录上传文件请求，图片和文档走同一个接口"""
+    """免登录上传文件请求，图片、文档、音频和视频走同一个接口"""
     file = FileField("file", validators=[
         FileRequired("上传文件不能为空"),
-        FileSize(max_size=15 * 1024 * 1024, message="上传文件最大不能超过15MB"),
+        MediaFileSize(),
         FileAllowed(
             _OPEN_UPLOAD_EXTENSIONS,
             message=f"仅允许上传{'/'.join(_OPEN_UPLOAD_EXTENSIONS)}文件",
