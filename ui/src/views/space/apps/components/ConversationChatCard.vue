@@ -134,15 +134,6 @@ const title = computed(() => {
 const draftAutoSize = computed(() =>
   draftExpanded.value ? { minRows: 6, maxRows: 10 } : { minRows: 1, maxRows: 4 },
 )
-const showThinking = computed(
-  () => thinking.value && !messages.value.some((item) => item.thinking),
-)
-const thinkingPlaceholder: ChatMessage = {
-  id: 'thinking-placeholder',
-  role: 'assistant',
-  content: '',
-  thinking: true,
-}
 const bubbleAvatar = (role: ChatMessage['role']) => {
   if (role === 'user') {
     return accountStore.account?.avatar || ''
@@ -178,13 +169,18 @@ const toChatMessage = (record: AgentMessage): ChatMessage => {
   }
 }
 
-// 历史里未完成且没有正文的助手消息不渲染，避免重进会话出现空气泡
+// 未完成且没有正文、也没有文件的助手消息不渲染：历史重进的空气泡，以及本轮生成中的占位气泡
 const visibleMessages = computed(() =>
   messages.value.filter((item) => {
-    if (!item.fromHistory || item.role !== 'assistant' || item.status !== 0) {
+    if (item.role !== 'assistant' || item.status !== 0) {
       return true
     }
-    return item.content.trim().length > 0 || (item.files?.length || 0) > 0
+    if (item.fromHistory) {
+      return item.content.trim().length > 0 || (item.files?.length || 0) > 0
+    }
+    const content = (item.content || '').trim()
+    const files = item.files || []
+    return content.length > 0 || files.length > 0
   }),
 )
 
@@ -354,7 +350,7 @@ const persistAssistantMessage = async (
     await upsertAgentConversationMessage(props.agent.id, props.conversation.id, {
       message_id: messageId,
       message_role: 'assistant',
-      message_content: content,
+      message_content: stripStreamCursor(content),
       message_status: messageStatus,
       message_type: 'reply',
       message_reasoning: messageReasoning,
@@ -656,7 +652,7 @@ const inputDisabled = computed(() => !gatewayReady.value || status.value !== 'co
 // 附件在发送时按一行一个 markdown 链接接在正文末尾，URL 原样保留
 const send = () => {
   const text = buildOutgoingText()
-  if (!text || inputDisabled.value || isGenerating.value) {
+  if (!text || inputDisabled.value) {
     return
   }
   const clientMsgId = crypto.randomUUID()
@@ -716,10 +712,6 @@ const onInputKeydown = (event: KeyboardEvent) => {
     return
   }
   event.preventDefault()
-  if (isGenerating.value) {
-    stopGeneration()
-    return
-  }
   send()
 }
 
@@ -1089,7 +1081,7 @@ onUnmounted(() => {
           <a-button type="text" size="mini" @click="loadHistory">重试</a-button>
         </div>
         <a-empty
-          v-else-if="!historyLoading && messages.length === 0 && !showThinking"
+          v-else-if="!historyLoading && messages.length === 0 && !thinking"
           description="暂无消息"
           class="my-8"
         />
@@ -1100,112 +1092,120 @@ onUnmounted(() => {
           :avatar="bubbleAvatar(item.role)"
           :name="bubbleName(item.role)"
         />
-        <chat-bubble
-          v-if="showThinking"
-          :message="thinkingPlaceholder"
-          :avatar="bubbleAvatar('assistant')"
-          :name="bubbleName('assistant')"
-        />
       </div>
     </div>
-    <!-- 输入区：附件预览在输入框上方；发送按钮固定与单行输入框同高，贴着 textarea 底边 -->
-    <div class="flex items-end gap-1 mt-3 flex-shrink-0">
-      <div class="flex min-w-0 flex-1 flex-col gap-2">
-        <div v-if="attachments.length > 0" class="flex flex-wrap items-center gap-2">
-          <template v-for="(item, idx) in attachments" :key="`${item.url}-${idx}`">
-            <div
-              v-if="item.isImage"
-              class="w-10 h-10 relative rounded-lg overflow-hidden group cursor-pointer"
-            >
-              <a-avatar shape="square" :size="40" :image-url="item.url" />
-              <div
-                class="hidden group-hover:flex items-center justify-center bg-gray-700/50 w-10 h-10 absolute top-0"
-              >
-                <icon-close class="text-white" @click="() => attachments.splice(idx, 1)" />
-              </div>
-            </div>
-            <div
-              v-else
-              class="flex h-10 max-w-[200px] items-center gap-1 rounded-lg border border-gray-200 bg-gray-50 px-2 text-gray-700"
-              :title="item.name"
-            >
-              <icon-file class="flex-shrink-0 text-gray-500" :size="14" />
-              <span class="min-w-0 truncate text-xs">{{ item.name }}</span>
-              <icon-close
-                class="flex-shrink-0 cursor-pointer text-gray-400 hover:text-gray-700"
-                :size="12"
-                @click="() => attachments.splice(idx, 1)"
-              />
-            </div>
+    <!-- 输入区：停止按钮和附件预览在胶囊上方；胶囊内右侧是上传、展开和发送 -->
+    <div class="mt-3 flex flex-shrink-0 flex-col gap-2">
+      <div v-if="isGenerating" class="relative flex h-8 justify-center">
+        <div class="absolute left-0 top-[50%] translate-y-[-50%] text-sm text-gray-500">
+          {{ thinking ? '思考中' : '生成中' }}<span class="thinking-dots"><i>.</i><i>.</i><i>.</i></span>
+        </div>
+        <a-button type="outline" class="stop-response" @click="stopGeneration">
+          <template #icon>
+            <icon-poweroff />
           </template>
-        </div>
-        <div class="relative">
-          <a-textarea
-            :key="draftExpanded ? 'expanded' : 'normal'"
-            v-model="draft"
-            class="draft-input"
-            :auto-size="draftAutoSize"
-            placeholder="输入消息，Enter 发送，Shift+Enter 换行"
-            :disabled="inputDisabled"
-            @keydown="onInputKeydown"
-          />
-          <a-button
-            type="text"
-            size="mini"
-            class="absolute left-1 bottom-1 z-10 !text-gray-600"
-            :loading="uploading"
-            :disabled="uploading"
-            aria-label="上传文件"
-            @click="openFilePicker"
-          >
-            <template #icon>
-              <icon-attachment />
-            </template>
-          </a-button>
-          <a-button
-            type="text"
-            size="mini"
-            class="absolute right-1 top-1 z-10 !text-gray-600"
-            :aria-label="draftExpanded ? '收起输入框' : '展开输入框'"
-            @click="toggleDraftExpanded"
-          >
-            <template #icon>
-              <icon-down v-if="draftExpanded" />
-              <icon-up v-else />
-            </template>
-          </a-button>
-          <input
-            ref="fileInputRef"
-            type="file"
-            class="hidden"
-            :accept="UPLOAD_ACCEPT"
-            @change="onFileChange"
-          />
-        </div>
+          停止响应
+        </a-button>
       </div>
-      <a-button
-        v-if="isGenerating"
-        type="primary"
-        status="danger"
-        class="send-button flex-shrink-0 rounded-lg"
-        aria-label="停止"
-        title="停止"
-        @click="stopGeneration"
-      >
-        <span class="stop-mark" aria-hidden="true" />
-      </a-button>
-      <a-button
-        v-else
-        type="primary"
-        class="send-button flex-shrink-0 rounded-lg"
-        aria-label="发送"
-        :disabled="inputDisabled || (!draft.trim() && attachments.length === 0)"
-        @click="send"
-      >
-        <template #icon>
-          <icon-send />
+      <div v-if="attachments.length > 0" class="flex flex-wrap items-center gap-2">
+        <template v-for="(item, idx) in attachments" :key="`${item.url}-${idx}`">
+          <div
+            v-if="item.isImage"
+            class="group relative h-10 w-10 cursor-pointer overflow-hidden rounded-lg"
+          >
+            <a-avatar shape="square" :size="40" :image-url="item.url" />
+            <div
+              class="pointer-events-none absolute inset-0 hidden items-center justify-center bg-gray-700/40 group-hover:flex"
+            />
+            <button
+              type="button"
+              class="absolute right-0 top-0 z-10 flex h-4 w-4 items-center justify-center rounded-full bg-gray-900/70 text-white"
+              aria-label="移除图片"
+              @click.stop="attachments.splice(idx, 1)"
+            >
+              <icon-close :size="10" />
+            </button>
+          </div>
+          <div
+            v-else
+            class="flex h-10 max-w-[200px] items-center gap-1 rounded-lg border border-gray-200 bg-gray-50 px-2 text-gray-700"
+            :title="item.name"
+          >
+            <icon-file class="flex-shrink-0 text-gray-500" :size="14" />
+            <span class="min-w-0 truncate text-xs">{{ item.name }}</span>
+            <icon-close
+              class="flex-shrink-0 cursor-pointer text-gray-400 hover:text-gray-700"
+              :size="12"
+              @click="() => attachments.splice(idx, 1)"
+            />
+          </div>
         </template>
-      </a-button>
+      </div>
+      <div
+        class="flex flex-col justify-center gap-2 rounded-[24px] border border-gray-200 bg-white px-4 py-2"
+      >
+        <div class="flex items-center gap-2">
+          <div class="draft-input min-w-0 flex-1">
+            <a-textarea
+              :key="draftExpanded ? 'expanded' : 'normal'"
+              v-model="draft"
+              :auto-size="draftAutoSize"
+              placeholder="输入消息，Enter 发送，Shift+Enter 换行"
+              :disabled="inputDisabled"
+              @keydown="onInputKeydown"
+            />
+          </div>
+          <div class="flex flex-shrink-0 items-center">
+            <a-button
+              type="text"
+              shape="circle"
+              size="mini"
+              class="!text-gray-700"
+              :loading="uploading"
+              :disabled="uploading"
+              aria-label="上传文件"
+              @click="openFilePicker"
+            >
+              <template #icon>
+                <icon-plus />
+              </template>
+            </a-button>
+            <a-button
+              type="text"
+              shape="circle"
+              size="mini"
+              class="!text-gray-700"
+              :aria-label="draftExpanded ? '收起输入框' : '展开输入框'"
+              @click="toggleDraftExpanded"
+            >
+              <template #icon>
+                <icon-down v-if="draftExpanded" />
+                <icon-up v-else />
+              </template>
+            </a-button>
+            <a-button
+              type="text"
+              shape="circle"
+              size="mini"
+              class="!text-gray-700"
+              aria-label="发送"
+              :disabled="inputDisabled || (!draft.trim() && attachments.length === 0)"
+              @click="send"
+            >
+              <template #icon>
+                <icon-send />
+              </template>
+            </a-button>
+          </div>
+        </div>
+        <input
+          ref="fileInputRef"
+          type="file"
+          class="hidden"
+          :accept="UPLOAD_ACCEPT"
+          @change="onFileChange"
+        />
+      </div>
     </div>
     <a-modal
       v-model:visible="editVisible"
@@ -1237,29 +1237,75 @@ onUnmounted(() => {
   width: 100%;
 }
 
-.draft-input :deep(.arco-textarea) {
-  padding-left: 36px;
-  padding-right: 36px;
-}
-
-.stop-mark {
+.draft-input :deep(.arco-textarea-wrapper),
+.draft-input :deep(.arco-textarea-wrapper:hover),
+.draft-input :deep(.arco-textarea-wrapper:focus-within),
+.draft-input :deep(.arco-textarea-wrapper.arco-textarea-focus),
+.draft-input :deep(.arco-textarea-wrapper.arco-textarea-disabled),
+.draft-input :deep(.arco-textarea-wrapper.arco-textarea-disabled:hover) {
   display: block;
-  width: 12px;
-  height: 12px;
-  background: currentColor;
+  border: none;
+  background: transparent;
+  box-shadow: none;
 }
 
-.send-button {
-  align-self: flex-end;
-  box-sizing: border-box;
-  width: 32px;
-  height: 32px !important;
-  min-height: 0;
-  max-height: 32px;
-  /* 外框有 1px 边框，贴 textarea 本身而不是外框 */
-  margin: 0 0 1px;
-  padding: 0;
+.draft-input :deep(.arco-textarea) {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  padding: 5px 0;
+  line-height: 22px;
+  outline: none;
+}
+
+.stop-response {
+  height: 32px;
+  border-radius: 8px;
+  border-color: #e5e7eb;
+  background-color: #fff;
+  color: #374151;
+}
+
+.stop-response:hover {
+  border-color: #d1d5db;
+  background-color: #fff;
+  color: #1f2937;
+}
+
+.thinking-dots {
+  display: inline-flex;
+  align-items: flex-end;
+  height: 1em;
+  margin-left: 1px;
+}
+
+.thinking-dots i {
+  display: inline-block;
+  font-style: normal;
   line-height: 1;
+  animation: thinking-dot-wave 1.2s ease-in-out infinite;
+}
+
+.thinking-dots i:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.thinking-dots i:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes thinking-dot-wave {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.25;
+  }
+
+  30% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
 }
 
 </style>

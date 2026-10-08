@@ -60,14 +60,12 @@ const html = computed(() => renderMarkdown(parts.value.text))
                 :key="file.url"
                 :src="file.url"
                 :alt="file.name"
-                width="160"
-                height="120"
-                fit="cover"
-                class="overflow-hidden rounded-lg"
+                fit="contain"
+                class="chat-image overflow-hidden rounded-lg"
               >
                 <template #error>
                   <a
-                    class="flex h-[120px] w-40 items-center px-2 text-xs text-blue-600"
+                    class="flex max-w-[240px] items-center px-2 py-1.5 text-xs text-blue-600"
                     :href="file.url"
                     target="_blank"
                     rel="noopener noreferrer"
@@ -105,6 +103,20 @@ const html = computed(() => renderMarkdown(parts.value.text))
 </template>
 
 <style scoped>
+.chat-image {
+  max-width: min(100%, 240px);
+  line-height: 0;
+}
+
+.chat-image :deep(.arco-image-img) {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: min(100%, 240px);
+  max-height: 240px;
+  object-fit: contain;
+}
+
 .chat-markdown {
   background-color: transparent;
   font-size: 14px;

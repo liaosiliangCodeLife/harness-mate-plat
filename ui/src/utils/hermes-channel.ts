@@ -40,15 +40,29 @@ const ensureAssistantMessage = (messages: ChatMessage[], id: string, thinking: b
   return messages.length - 1
 }
 
-// Hermes 流式光标，与 plugin 侧 STREAM_CURSOR 一致，只挂在正文末尾
-const STREAM_CURSOR = ' ▉'
+// 不同 Hermes 版本挂在正文末尾的流式光标，字形不完全一样
+const STREAM_CURSOR_GLYPHS = new Set([
+  '\u2589', // ▉
+  '\u258A', // ▊
+  '\u258B', // ▋
+  '\u258C', // ▌
+  '\u258D', // ▍
+  '\u2588', // █
+  '\u2026', // …
+])
 
-// 去掉末尾流式光标（含前面的空格）；正文中间的相同字符保留
+// 去掉结尾的空格和换行，用来判断光标；正文中间的空白不动
+const trimTrailingWhitespace = (text: string): string => text.replace(/[ \r\n]+$/, '')
+
+// 去掉正文结尾的流式光标。先忽略结尾空白，再删掉一个光标字形，最后再去一次结尾空白。
+// 结尾不是光标时原文原样返回；正文中间的相同字符一律保留。
 export const stripStreamCursor = (text: string): string => {
-  if (text.endsWith(STREAM_CURSOR)) {
-    return text.slice(0, -STREAM_CURSOR.length)
+  const trimmed = trimTrailingWhitespace(text)
+  const glyph = trimmed.slice(-1)
+  if (!STREAM_CURSOR_GLYPHS.has(glyph)) {
+    return text
   }
-  return text
+  return trimTrailingWhitespace(trimmed.slice(0, -1))
 }
 
 // delta 的 text 是截至当前的累计正文。新文本能接上现有正文时直接覆盖；
