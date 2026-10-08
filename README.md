@@ -65,6 +65,7 @@ hermes gateway restart
 - [协议文档](#协议文档)
 - [技术栈](#技术栈)
 - [安全与边界](#安全与边界)
+- [问题交流群](#问题交流群)
 
 ---
 
@@ -248,3 +249,11 @@ docker/    Docker Compose 部署：nginx、certbot、postgres、redis
 
 - [Hermes Agent](https://hermes-agent.nousresearch.com/)：默认对接的本地 Agent 运行时
 - 所有让这套链路跑起来的上游开源项目
+
+## 问题交流群
+
+<img src="assets/harnessmate-group.png" alt="HarnessMate 交流群（企业微信）" width="260" />
+
+使用微信或企业微信扫码加入交流群 —— 提问、反馈、聊用法都欢迎。
+
+问题提交：**liaosiliang1234@126.com** （AI 每天会自动修复）。

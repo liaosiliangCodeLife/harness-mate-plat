@@ -65,6 +65,7 @@ When the log shows `harness_mate 已连接 WS 网关: bot_id=…` you are connec
 - [Protocol docs](#protocol-docs)
 - [Tech stack](#tech-stack)
 - [Security & boundaries](#security--boundaries)
+- [Community & support](#community--support)
 
 ---
 
@@ -248,3 +249,11 @@ Released under the [MIT](LICENSE) license. Copyright (c) 2026 liaosiliangCodeLif
 
 - [Hermes Agent](https://hermes-agent.nousresearch.com/) — the local agent runtime it connects to by default
 - Every upstream open-source project that makes this chain work
+
+## Community & support
+
+<img src="assets/harnessmate-group.png" alt="HarnessMate community group (WeCom / WeChat)" width="260" />
+
+Scan with WeChat or WeCom to join the community group — questions, feedback and usage chat are all welcome.
+
+Report issues: **liaosiliang1234@126.com** (an AI fixes them automatically every day).
