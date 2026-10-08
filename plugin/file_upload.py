@@ -10,6 +10,7 @@
 import json
 import mimetypes
 import os
+import tempfile
 import uuid
 from pathlib import Path
 from typing import Optional, Tuple
@@ -17,15 +18,20 @@ from urllib import error as urlerror
 from urllib import request as urlrequest
 
 
-MAX_UPLOAD_BYTES = 15 * 1024 * 1024
+MAX_UPLOAD_BYTES = 16 * 1024 * 1024
+MAX_MEDIA_UPLOAD_BYTES = 1024 * 1024 * 1024
 IMAGE_EXTENSIONS = frozenset({"jpg", "jpeg", "png", "webp", "gif", "svg"})
 DOCUMENT_EXTENSIONS = frozenset(
     {"txt", "markdown", "md", "pdf", "html", "htm", "xlsx", "xls", "doc", "docx", "csv"}
 )
-ALLOWED_EXTENSIONS = IMAGE_EXTENSIONS | DOCUMENT_EXTENSIONS
+AUDIO_EXTENSIONS = {"mp3", "wav", "m4a", "aac", "flac", "ogg", "oga", "opus", "amr", "wma", "aiff", "mka"}
+VIDEO_EXTENSIONS = {"mp4", "mov", "m4v", "avi", "mkv", "webm", "flv", "wmv", "mpeg", "mpg", "ts", "3gp"}
+ALLOWED_EXTENSIONS = IMAGE_EXTENSIONS | DOCUMENT_EXTENSIONS | AUDIO_EXTENSIONS | VIDEO_EXTENSIONS
 OPEN_API_UPLOAD_PATH = "/api/open-api/upload-file"
 DEFAULT_OPEN_API_UPLOAD_URL = "https://harness.alltman.com" + OPEN_API_UPLOAD_PATH
 UPLOAD_TIMEOUT_SECONDS = 60.0
+UPLOAD_MEDIA_TIMEOUT_SECONDS = 1800.0
+_UPLOAD_COPY_CHUNK_BYTES = 1024 * 1024
 
 
 class OpenApiUploadError(Exception):
@@ -64,13 +70,18 @@ def media_kind_for_name(filename: str) -> str:
     """
     * @Author Leon-liao
     * @Function: media_kind_for_name(filename)
-    * @Description //按扩展名区分图片和普通文件
-    * @Date :2026/10/07 20:12:00
+    * @Description //按扩展名区分图片、视频、音频和普通文件
+    * @Date :2026/10/08 20:31:00
     * @Param: filename: 文件名或路径
-    * @return：图片返回 image，其余返回 file
+    * @return：image、video、audio 或 file。图片优先，其次视频，再次音频
     """
-    if extension_of(filename) in IMAGE_EXTENSIONS:
+    extension = extension_of(filename)
+    if extension in IMAGE_EXTENSIONS:
         return "image"
+    if extension in VIDEO_EXTENSIONS:
+        return "video"
+    if extension in AUDIO_EXTENSIONS:
+        return "audio"
     return "file"
 
 
@@ -86,8 +97,13 @@ def mime_type_for_name(filename: str) -> str:
     guessed, _encoding = mimetypes.guess_type(str(filename or ""))
     if guessed:
         return guessed
-    if extension_of(filename) in IMAGE_EXTENSIONS:
+    kind = media_kind_for_name(filename)
+    if kind == "image":
         return "image/jpeg"
+    if kind == "audio":
+        return "audio/mpeg"
+    if kind == "video":
+        return "video/mp4"
     return "application/octet-stream"
 
 
@@ -128,14 +144,14 @@ def _safe_filename(filename: str) -> str:
     return name
 
 
-def prepare_upload_file(file_path: str) -> Tuple[str, bytes, str]:
+def prepare_upload_file(file_path: str) -> Tuple[str, str, int, str]:
     """
     * @Author Leon-liao
     * @Function: prepare_upload_file(file_path)
-    * @Description //读取本地文件并校验扩展名与 15 MB 大小上限
-    * @Date :2026/10/07 20:12:00
+    * @Description //校验本地文件的扩展名与分级大小上限，不把内容读进内存
+    * @Date :2026/10/08 20:31:00
     * @Param: file_path: 本地文件路径
-    * @return：(安全文件名, 文件字节, MIME)
+    * @return：(安全文件名, 本地路径, 字节大小, MIME)
     """
     path = Path(str(file_path or "")).expanduser()
     if not path.is_file():
@@ -144,48 +160,69 @@ def prepare_upload_file(file_path: str) -> Tuple[str, bytes, str]:
     if extension not in ALLOWED_EXTENSIONS:
         shown = extension or "未知"
         raise OpenApiUploadError(f"该.{shown}扩展的文件不允许上传")
-    content = path.read_bytes()
-    if len(content) > MAX_UPLOAD_BYTES:
-        raise OpenApiUploadError("文件大小不能超过 15 MB")
-    if not content:
+    size = os.path.getsize(path)
+    if size <= 0:
         raise OpenApiUploadError("文件内容不能为空")
-    return _safe_filename(path.name), content, mime_type_for_name(path.name)
+    kind = media_kind_for_name(path.name)
+    if kind in {"audio", "video"}:
+        if size > MAX_MEDIA_UPLOAD_BYTES:
+            raise OpenApiUploadError("音视频大小不能超过 1024 MB")
+    elif size > MAX_UPLOAD_BYTES:
+        raise OpenApiUploadError("文件大小不能超过 16 MB")
+    return _safe_filename(path.name), str(path), size, mime_type_for_name(path.name)
 
 
-def _encode_multipart(
+def _write_multipart_file(
     fields: dict,
     filename: str,
-    content: bytes,
+    source_path: str,
     content_type: str,
-) -> Tuple[bytes, str]:
+) -> Tuple[str, str, int]:
     """
     * @Author Leon-liao
-    * @Function: _encode_multipart(fields, filename, content, content_type)
-    * @Description //组装 multipart/form-data，文件字段名为 file
-    * @Date :2026/10/07 20:12:00
-    * @Param: fields: 文本表单字段；filename: 文件名；content: 文件字节；content_type: MIME
-    * @return：(请求体, boundary)
+    * @Function: _write_multipart_file(fields, filename, source_path, content_type)
+    * @Description //把 multipart 写到临时文件，文件内容按块拷贝，避免整段进内存
+    * @Date :2026/10/08 20:31:00
+    * @Param: fields: 文本表单字段；filename: 文件名；source_path: 本地文件路径；content_type: MIME
+    * @return：(临时文件路径, boundary, 请求体字节长度)。调用方负责删除临时文件
     """
     boundary = uuid.uuid4().hex
-    chunks = []
-    for key, value in fields.items():
-        chunks.append(
+    temp = tempfile.NamedTemporaryFile(delete=False)
+    temp_path = temp.name
+    try:
+        for key, value in fields.items():
+            temp.write(
+                (
+                    f"--{boundary}\r\n"
+                    f'Content-Disposition: form-data; name="{key}"\r\n\r\n'
+                    f"{value}\r\n"
+                ).encode("utf-8")
+            )
+        temp.write(
             (
                 f"--{boundary}\r\n"
-                f'Content-Disposition: form-data; name="{key}"\r\n\r\n'
-                f"{value}\r\n"
+                f'Content-Disposition: form-data; name="file"; filename="{filename}"\r\n'
+                f"Content-Type: {content_type}\r\n\r\n"
             ).encode("utf-8")
         )
-    chunks.append(
-        (
-            f"--{boundary}\r\n"
-            f'Content-Disposition: form-data; name="file"; filename="{filename}"\r\n'
-            f"Content-Type: {content_type}\r\n\r\n"
-        ).encode("utf-8")
-    )
-    chunks.append(content)
-    chunks.append(f"\r\n--{boundary}--\r\n".encode("utf-8"))
-    return b"".join(chunks), boundary
+        with open(source_path, "rb") as source:
+            while True:
+                chunk = source.read(_UPLOAD_COPY_CHUNK_BYTES)
+                if not chunk:
+                    break
+                temp.write(chunk)
+        temp.write(f"\r\n--{boundary}--\r\n".encode("utf-8"))
+        temp.flush()
+        content_length = temp.tell()
+    except Exception:
+        temp.close()
+        try:
+            os.remove(temp_path)
+        except OSError:
+            pass
+        raise
+    temp.close()
+    return temp_path, boundary, content_length
 
 
 def parse_upload_response(raw: bytes) -> str:
@@ -219,36 +256,60 @@ def parse_upload_response(raw: bytes) -> str:
     return url
 
 
-def _post_multipart(upload_url: str, body: bytes, boundary: str, timeout: float) -> bytes:
+def _post_multipart(
+    upload_url: str,
+    body_path: str,
+    boundary: str,
+    content_length: int,
+    timeout: float,
+) -> bytes:
     """
     * @Author Leon-liao
-    * @Function: _post_multipart(upload_url, body, boundary, timeout)
-    * @Description //向免授权上传接口发送 multipart 请求，不附带 Authorization
-    * @Date :2026/10/07 20:12:00
-    * @Param: upload_url: 接口地址；body: 请求体；boundary: 分隔符；timeout: 超时秒数
+    * @Function: _post_multipart(upload_url, body_path, boundary, content_length, timeout)
+    * @Description //把临时文件当作请求体发给免授权上传接口，并带上 Content-Length
+    * @Date :2026/10/08 20:31:00
+    * @Param: upload_url: 接口地址；body_path: multipart 临时文件；boundary: 分隔符；content_length: 请求体长度；timeout: 超时秒数
     * @return：响应字节
     """
-    req = urlrequest.Request(
-        upload_url,
-        data=body,
-        method="POST",
-        headers={
-            "Content-Type": f"multipart/form-data; boundary={boundary}",
-            "Accept": "application/json",
-        },
-    )
-    try:
-        with urlrequest.urlopen(req, timeout=timeout) as response:
-            return response.read()
-    except urlerror.HTTPError as exc:
-        detail = exc.read()
-        if detail:
-            return detail
-        raise OpenApiUploadError("上传文件失败，请稍后重试", retryable=True) from exc
-    except urlerror.URLError as exc:
-        raise OpenApiUploadError("上传文件失败，请稍后重试", retryable=True) from exc
-    except TimeoutError as exc:
-        raise OpenApiUploadError("上传文件失败，请稍后重试", retryable=True) from exc
+    with open(body_path, "rb") as body:
+        req = urlrequest.Request(
+            upload_url,
+            data=body,
+            method="POST",
+            headers={
+                "Content-Type": f"multipart/form-data; boundary={boundary}",
+                "Content-Length": str(content_length),
+                "Accept": "application/json",
+            },
+        )
+        try:
+            with urlrequest.urlopen(req, timeout=timeout) as response:
+                return response.read()
+        except urlerror.HTTPError as exc:
+            detail = exc.read()
+            if detail:
+                return detail
+            raise OpenApiUploadError("上传文件失败，请稍后重试", retryable=True) from exc
+        except urlerror.URLError as exc:
+            raise OpenApiUploadError("上传文件失败，请稍后重试", retryable=True) from exc
+        except TimeoutError as exc:
+            raise OpenApiUploadError("上传文件失败，请稍后重试", retryable=True) from exc
+
+
+def _resolve_timeout(filename: str, timeout: Optional[float]) -> float:
+    """
+    * @Author Leon-liao
+    * @Function: _resolve_timeout(filename, timeout)
+    * @Description //未指定超时时，音视频用 1800 秒，其它文件用 60 秒
+    * @Date :2026/10/08 20:31:00
+    * @Param: filename: 上传文件名；timeout: 调用方指定的秒数，None 表示按类型选择
+    * @return：实际使用的超时秒数
+    """
+    if timeout is not None:
+        return timeout
+    if media_kind_for_name(filename) in {"audio", "video"}:
+        return UPLOAD_MEDIA_TIMEOUT_SECONDS
+    return UPLOAD_TIMEOUT_SECONDS
 
 
 def upload_open_api_file(
@@ -277,17 +338,26 @@ def upload_open_api_file(
     if not session_id:
         raise OpenApiUploadError("session_id 不能为空")
 
-    filename, content, content_type = prepare_upload_file(file_path)
-    body, boundary = _encode_multipart(
-        {"bot_id": bot_id, "bot_key": bot_key, "session_id": session_id},
-        filename,
-        content,
-        content_type,
-    )
-    raw = _post_multipart(
-        resolve_upload_url(upload_url),
-        body,
-        boundary,
-        UPLOAD_TIMEOUT_SECONDS if timeout is None else timeout,
-    )
-    return parse_upload_response(raw)
+    filename, local_path, _size, content_type = prepare_upload_file(file_path)
+    body_path = ""
+    try:
+        body_path, boundary, content_length = _write_multipart_file(
+            {"bot_id": bot_id, "bot_key": bot_key, "session_id": session_id},
+            filename,
+            local_path,
+            content_type,
+        )
+        raw = _post_multipart(
+            resolve_upload_url(upload_url),
+            body_path,
+            boundary,
+            content_length,
+            _resolve_timeout(filename, timeout),
+        )
+        return parse_upload_response(raw)
+    finally:
+        if body_path:
+            try:
+                os.remove(body_path)
+            except OSError:
+                pass

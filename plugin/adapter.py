@@ -198,7 +198,7 @@ def _extract_inbound_file(data: Dict[str, Any], nested: Dict[str, Any]) -> Dict[
     url = str(source.get("url") or source.get("file_url") or "").strip()
     file_name = str(source.get("file_name") or source.get("name") or "").strip()
     hinted = str(source.get("media_type") or "").strip().lower()
-    if hinted in {"image", "file"}:
+    if hinted in {"image", "audio", "video", "file"}:
         media_type = hinted
     else:
         media_type = media_kind_for_name(file_name or url)
@@ -604,11 +604,11 @@ class HarnessMateAdapter(BasePlatformAdapter):
             if inbound_file:
                 media_urls = [inbound_file["url"]]
                 media_types = [inbound_file["mime_type"]]
-                message_type = (
-                    MessageType.PHOTO
-                    if inbound_file["media_type"] == "image"
-                    else MessageType.DOCUMENT
-                )
+                message_type = {
+                    "image": MessageType.PHOTO,
+                    "video": MessageType.VIDEO,
+                    "audio": MessageType.AUDIO,
+                }.get(inbound_file["media_type"], MessageType.DOCUMENT)
 
             event = MessageEvent(
                 source=self.build_source(
@@ -917,7 +917,7 @@ class HarnessMateAdapter(BasePlatformAdapter):
         if self._ws is None:
             return SendResult(success=False, error="WebSocket not connected", retryable=True)
         display_name = str(file_name or "").strip() or os.path.basename(str(file_path or ""))
-        kind = media_type if media_type in {"image", "file"} else media_kind_for_name(display_name)
+        kind = media_type if media_type in {"image", "audio", "video", "file"} else media_kind_for_name(display_name)
         message_id = str(metadata.get("message_id") or uuid.uuid4())
         try:
             url = await asyncio.to_thread(
@@ -1047,6 +1047,62 @@ class HarnessMateAdapter(BasePlatformAdapter):
             metadata,
             kind,
             file_name=file_name,
+        )
+
+    async def send_voice(
+        self,
+        chat_id: str,
+        audio_path: str,
+        caption: Optional[str] = None,
+        reply_to: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        **kwargs,
+    ) -> SendResult:
+        """
+        * @Author Leon-liao
+        * @Function: send_voice(chat_id, audio_path, caption, reply_to, metadata, **kwargs)
+        * @Description //上传本地音频并发送给当前会话，reply 帧 media_type 为 audio
+        * @Date :2026/10/08 20:31:00
+        * @Param: chat_id: 账号 ID；audio_path: 本地音频路径；caption: 说明；reply_to: 兼容参数；metadata: 路由元数据
+        * @return：SendResult 发送结果
+        """
+        del reply_to, kwargs
+        if extension_of(audio_path) and media_kind_for_name(audio_path) != "audio":
+            return SendResult(success=False, error=f"该.{extension_of(audio_path)}扩展的文件不允许作为音频上传")
+        return await self._deliver_local_file(
+            chat_id,
+            audio_path,
+            caption,
+            metadata,
+            "audio",
+        )
+
+    async def send_video(
+        self,
+        chat_id: str,
+        video_path: str,
+        caption: Optional[str] = None,
+        reply_to: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        **kwargs,
+    ) -> SendResult:
+        """
+        * @Author Leon-liao
+        * @Function: send_video(chat_id, video_path, caption, reply_to, metadata, **kwargs)
+        * @Description //上传本地视频并发送给当前会话，reply 帧 media_type 为 video
+        * @Date :2026/10/08 20:31:00
+        * @Param: chat_id: 账号 ID；video_path: 本地视频路径；caption: 说明；reply_to: 兼容参数；metadata: 路由元数据
+        * @return：SendResult 发送结果
+        """
+        del reply_to, kwargs
+        if extension_of(video_path) and media_kind_for_name(video_path) != "video":
+            return SendResult(success=False, error=f"该.{extension_of(video_path)}扩展的文件不允许作为视频上传")
+        return await self._deliver_local_file(
+            chat_id,
+            video_path,
+            caption,
+            metadata,
+            "video",
         )
 
     async def send_typing(self, chat_id: str, metadata=None) -> None:

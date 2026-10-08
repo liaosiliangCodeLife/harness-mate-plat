@@ -270,7 +270,7 @@ JWT Claims：
 | `reasoning` | ❌ | 思考过程文本（可选） |
 | `url` | 文件回复时 | 文件可访问地址。本地文件先经 `POST /open-api/upload-file` 上传，`session_id` 使用当前对端 `ws_session_id` |
 | `file_name` | 文件回复时 | 文件名 |
-| `media_type` | 文件回复时 | `image` 或 `file` |
+| `media_type` | 文件回复时 | `image`、`file`、`audio` 或 `video`。音频扩展名：mp3、wav、m4a、aac、flac、ogg、oga、opus、amr、wma、aiff、mka；视频扩展名：mp4、mov、m4v、avi、mkv、webm、flv、wmv、mpeg、mpg、ts、3gp。普通文件（图片、文档）最大 16MB，音频和视频最大 1024MB |
 
 ### 6.4 思考中状态（typing）
 
