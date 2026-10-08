@@ -6,6 +6,7 @@ import { Message, type ValidatedError } from '@arco-design/web-vue'
 import { usePasswordLogin } from '@/hooks/use-auth'
 import { useProvider } from '@/hooks/use-oauth'
 import RegisterModal from '@/views/auth/components/RegisterModal.vue'
+import { APP_VERSION } from '@/utils/version'
 
 // 1.定义自定义组件所需数据
 const errorMessage = ref('')
@@ -60,6 +61,7 @@ const handleSubmit = async ({ errors }: { errors: Record<string, ValidatedError>
   <div class="">
     <!-- 顶部标题 -->
     <div class="text-gray-900 font-bold text-2xl leading-8">Harness Mate</div>
+    <div class="mt-1 text-xs text-gray-400">Version {{ APP_VERSION }}</div>
     <p class="text-base leading-6 text-gray-600">高效连接你的本地智能体</p>
     <!-- 错误提示占位符 -->
     <div class="h-8 text-red-700 leading-8 line-clamp-1">{{ errorMessage }}</div>

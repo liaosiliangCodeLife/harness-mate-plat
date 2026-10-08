@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onUnmounted, ref } from 'vue'
 import AssistantAgentBackground from '@/assets/images/assistant-agent-background.png'
+import { APP_VERSION } from '@/utils/version'
 
 const linuxInstallCommand =
   'curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash'
@@ -68,6 +69,7 @@ onUnmounted(() => {
           <div class="text-[32px] font-bold text-[#165DFF] mt-[52px] mb-4">
             Harness Mate 端到端智能体平台
           </div>
+          <div class="text-xs text-gray-400">Version {{ APP_VERSION }}</div>
           <div class="text-base text-gray-700">
             从智能体创建、会话接入到运行打通，Harness Mate 把端到端的一整套能力放在一个平台里：创建并管理智能体，接入自己的设备与会话，通过统一网关让消息与文件在平台与智能体之间点对点流转，再用开放接口把 AI 能力接进你现有的业务系统。
           </div>
