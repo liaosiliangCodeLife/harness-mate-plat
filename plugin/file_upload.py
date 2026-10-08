@@ -11,6 +11,7 @@ import json
 import mimetypes
 import os
 import tempfile
+import time
 import uuid
 from pathlib import Path
 from typing import Optional, Tuple
@@ -32,6 +33,8 @@ DEFAULT_OPEN_API_UPLOAD_URL = "https://harness.alltman.com" + OPEN_API_UPLOAD_PA
 UPLOAD_TIMEOUT_SECONDS = 60.0
 UPLOAD_MEDIA_TIMEOUT_SECONDS = 1800.0
 _UPLOAD_COPY_CHUNK_BYTES = 1024 * 1024
+_UPLOAD_MAX_ATTEMPTS = 4
+_UPLOAD_RETRY_DELAYS = (0.5, 1.5, 3.0)
 
 
 class OpenApiUploadError(Exception):
@@ -312,6 +315,41 @@ def _resolve_timeout(filename: str, timeout: Optional[float]) -> float:
     return UPLOAD_TIMEOUT_SECONDS
 
 
+def _upload_error_reason(exc: BaseException) -> str:
+    """
+    * @Author Leon-liao
+    * @Function: _upload_error_reason(exc)
+    * @Description //取出最后一次上传失败的底层原因，供重试耗尽后的提示使用
+    * @Date :2026/10/08 22:08:00
+    * @Param: exc: 最后一次失败的异常，可能是 URLError、TimeoutError 或 OpenApiUploadError
+    * @return：可读的原因字符串
+    """
+    current = exc.__cause__ if isinstance(exc, OpenApiUploadError) and exc.__cause__ is not None else exc
+    if isinstance(current, urlerror.URLError) and current.reason is not None:
+        return str(current.reason)
+    if isinstance(current, OpenApiUploadError):
+        return current.message
+    return str(current)
+
+
+def _read_http_error_body(exc: urlerror.HTTPError) -> bytes:
+    """
+    * @Author Leon-liao
+    * @Function: _read_http_error_body(exc)
+    * @Description //读取 HTTP 错误响应体；读不到或为空时返回空字节，表示这次请求没有业务 JSON
+    * @Date :2026/10/08 22:08:00
+    * @Param: exc: urllib 抛出的 HTTPError
+    * @return：响应体字节；没有内容时为空字节串
+    """
+    try:
+        detail = exc.read()
+    except Exception:
+        return b""
+    if not detail:
+        return b""
+    return detail
+
+
 def upload_open_api_file(
     file_path: str,
     bot_id: str,
@@ -323,8 +361,8 @@ def upload_open_api_file(
     """
     * @Author Leon-liao
     * @Function: upload_open_api_file(file_path, bot_id, bot_key, session_id, upload_url, timeout)
-    * @Description //用智能体标识、网关密钥和会话标识把本地文件上传到对象存储
-    * @Date :2026/10/07 20:12:00
+    * @Description //用智能体标识、网关密钥和会话标识把本地文件上传到对象存储。连接被对端断开这类网络失败会自动重试，服务端业务错误不重试
+    * @Date :2026/10/08 22:08:00
     * @Param: file_path: 本地文件；bot_id: 智能体业务标识；bot_key: 网关密钥；session_id: 会话 ws_session_id；upload_url: 上传地址；timeout: 超时秒数
     * @return：上传后的可访问 URL
     """
@@ -347,14 +385,45 @@ def upload_open_api_file(
             local_path,
             content_type,
         )
-        raw = _post_multipart(
-            resolve_upload_url(upload_url),
-            body_path,
-            boundary,
-            content_length,
-            _resolve_timeout(filename, timeout),
-        )
-        return parse_upload_response(raw)
+        request_timeout = _resolve_timeout(filename, timeout)
+        resolved_url = resolve_upload_url(upload_url)
+        last_error: Optional[BaseException] = None
+        for attempt in range(_UPLOAD_MAX_ATTEMPTS):
+            try:
+                raw = _post_multipart(
+                    resolved_url,
+                    body_path,
+                    boundary,
+                    content_length,
+                    request_timeout,
+                )
+                return parse_upload_response(raw)
+            except urlerror.HTTPError as exc:
+                detail = _read_http_error_body(exc)
+                if detail:
+                    try:
+                        return parse_upload_response(detail)
+                    except OpenApiUploadError as parsed:
+                        if not parsed.retryable:
+                            raise
+                        last_error = parsed
+                else:
+                    last_error = exc
+            except urlerror.URLError as exc:
+                last_error = exc
+            except TimeoutError as exc:
+                last_error = exc
+            except OpenApiUploadError as exc:
+                if not exc.retryable:
+                    raise
+                last_error = exc
+            if attempt < _UPLOAD_MAX_ATTEMPTS - 1:
+                time.sleep(_UPLOAD_RETRY_DELAYS[attempt])
+        reason = _upload_error_reason(last_error) if last_error is not None else ""
+        raise OpenApiUploadError(
+            f"上传文件失败，请稍后重试（已重试 {_UPLOAD_MAX_ATTEMPTS - 1} 次，最后错误：{reason}）",
+            retryable=True,
+        ) from last_error
     finally:
         if body_path:
             try:
