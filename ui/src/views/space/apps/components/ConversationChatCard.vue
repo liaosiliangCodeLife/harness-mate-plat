@@ -1096,8 +1096,8 @@ onUnmounted(() => {
     </div>
     <!-- 输入区：停止按钮和附件预览在胶囊上方；胶囊内右侧是上传、展开和发送 -->
     <div class="mt-3 flex flex-shrink-0 flex-col gap-2">
-      <div v-if="isGenerating" class="relative flex h-8 justify-center">
-        <div class="absolute left-0 top-[50%] translate-y-[-50%] text-sm text-gray-500">
+      <div v-if="isGenerating" class="relative mb-1.5 flex h-8 justify-center">
+        <div class="absolute left-0 top-[50%] translate-y-[-50%] text-[14px] text-[#374151]">
           {{ thinking ? '思考中' : '生成中' }}<span class="thinking-dots"><i>.</i><i>.</i><i>.</i></span>
         </div>
         <a-button type="outline" class="stop-response" @click="stopGeneration">
