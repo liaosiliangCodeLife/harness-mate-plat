@@ -2,6 +2,7 @@
 import { computed, type PropType } from 'vue'
 import type { ChatMessage } from '@/models/agent-message'
 import { formatFileSize, splitMessageFiles } from '@/utils/chat-files'
+import { stripCursorGlyphs } from '@/utils/hermes-channel'
 import { renderMarkdown } from '@/utils/markdown'
 
 // 1.定义自定义组件所需数据
@@ -18,7 +19,9 @@ const avatarUrl = computed(() => (props.avatar || '').trim())
 const generating = computed(
   () => !isUser.value && !props.message.fromHistory && props.message.status === 0,
 )
-const parts = computed(() => splitMessageFiles(props.message.content, props.message.files))
+const parts = computed(() =>
+  splitMessageFiles(stripCursorGlyphs(props.message.content || ''), props.message.files),
+)
 const imageFiles = computed(() => parts.value.files.filter((file) => file.is_image))
 const otherFiles = computed(() => parts.value.files.filter((file) => !file.is_image))
 const html = computed(() => renderMarkdown(parts.value.text))

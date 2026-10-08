@@ -65,10 +65,17 @@ export const stripStreamCursor = (text: string): string => {
   return trimTrailingWhitespace(trimmed.slice(0, -1))
 }
 
+// 块状光标。这些字形不会出现在正常中英文正文里，任意位置都可以删。
+// 省略号 U+2026 不在这里，只由 stripStreamCursor 在结尾处理。
+const CURSOR_BLOCK_GLYPH = /[\u2588-\u258F]/g
+
+// 删掉正文任意位置的块状光标，空白和其余字符保持原样
+export const stripCursorGlyphs = (text: string): string => text.replace(CURSOR_BLOCK_GLYPH, '')
+
 // delta 的 text 是截至当前的累计正文。新文本能接上现有正文时直接覆盖；
 // 现有正文已以新文本结尾时保留原文，避免缩短丢字；两边都对不上才按增量追加。
 const mergeReplyContent = (current: string, incoming: string, delta: boolean): string => {
-  const visible = stripStreamCursor(incoming)
+  const visible = stripCursorGlyphs(stripStreamCursor(incoming))
   if (!delta) {
     return visible || current
   }

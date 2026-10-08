@@ -27,7 +27,7 @@ import { updateConversationStatus } from '@/services/conversation'
 import { uploadFile, uploadImage } from '@/services/upload-file'
 import { useAccountStore } from '@/stores/account'
 import { normalizeChatFiles } from '@/utils/chat-files'
-import { reduceHermesReply, stripStreamCursor } from '@/utils/hermes-channel'
+import { reduceHermesReply, stripCursorGlyphs, stripStreamCursor } from '@/utils/hermes-channel'
 import ChatBubble from '@/views/space/apps/components/ChatBubble.vue'
 import { reloadDetailAgentKey } from '@/views/space/apps/detail-agent'
 
@@ -161,7 +161,7 @@ const toChatMessage = (record: AgentMessage): ChatMessage => {
   return {
     id: `history:${record.id}`,
     role: record.message_role === 'user' ? 'user' : 'assistant',
-    content: stripStreamCursor(record.message_content || ''),
+    content: stripCursorGlyphs(stripStreamCursor(record.message_content || '')),
     thinking: false,
     status: record.message_status,
     fromHistory: true,
@@ -350,7 +350,7 @@ const persistAssistantMessage = async (
     await upsertAgentConversationMessage(props.agent.id, props.conversation.id, {
       message_id: messageId,
       message_role: 'assistant',
-      message_content: stripStreamCursor(content),
+      message_content: stripCursorGlyphs(stripStreamCursor(content)),
       message_status: messageStatus,
       message_type: 'reply',
       message_reasoning: messageReasoning,
