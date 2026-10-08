@@ -257,3 +257,13 @@ docker/    Docker Compose 部署：nginx、certbot、postgres、redis
 使用微信或企业微信扫码加入交流群 —— 提问、反馈、聊用法都欢迎。
 
 问题提交：**liaosiliang1234@126.com** （AI 每天会自动修复）。
+
+### Bug 上报格式
+
+提交问题时按这三条写，定位最快：
+
+```
+1、现象：
+2、复现路径：
+3、是否必现：
+```

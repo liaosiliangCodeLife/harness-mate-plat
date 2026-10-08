@@ -257,3 +257,13 @@ Released under the [MIT](LICENSE) license. Copyright (c) 2026 liaosiliangCodeLif
 Scan with WeChat or WeCom to join the community group — questions, feedback and usage chat are all welcome.
 
 Report issues: **liaosiliang1234@126.com** (an AI fixes them automatically every day).
+
+### Bug report format
+
+Please use these three lines when reporting — it is the fastest way to reproduce and fix:
+
+```
+1. What happens:
+2. Steps to reproduce:
+3. Always reproducible?:
+```
