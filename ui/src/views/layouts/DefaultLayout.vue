@@ -58,10 +58,16 @@ onMounted(async () => {
         <!-- 上半部分 -->
         <div class="">
           <!-- 顶部Logo -->
-          <router-link
-            to="/home"
-            class="block h-9 w-[110px] mb-5 bg-gray-200 hover:bg-gray-300 transition-all rounded-lg"
-          />
+          <a
+            href="https://github.com/liaosiliangCodeLife/harness-mate-plat"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="GitHub 仓库"
+            class="mb-5 flex h-9 w-[110px] items-center justify-center gap-2 rounded-lg bg-gray-200 text-sm text-gray-600 transition-all hover:bg-gray-300 hover:text-gray-800"
+          >
+            <icon-github :size="16" />
+            GitHub
+          </a>
           <!-- 侧边栏导航 -->
           <layout-sidebar />
         </div>

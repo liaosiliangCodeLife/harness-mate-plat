@@ -126,7 +126,7 @@ go build -o gateway .
 WS_GATEWAY_PORT=8765 ./gateway   # 默认监听 8765，可用环境变量覆盖；JWT 密钥与智能体配置保持一致
 ```
 
-**Agent 侧插件（plugin）**：一条命令装进 Hermes —— `hermes plugins install liaosiliangCodeLife/harness-mate-plat/plugin --yes-deps --enable`，再填网关地址、`bot_id` 与 `bot_key` 即可连通；完整步骤、验证与排障见 [plugin/INSTALL.md](plugin/INSTALL.md)。它同时负责把 Agent 的本机文件上传到平台再随回复回传。
+**Agent 侧插件（plugin）**：把 `plugin/` 放到 `~/.hermes/hermes-agent/plugins/platforms/harness_mate/`，在插件配置里填网关地址、`bot_id` 与 `bot_key` 即可连通；它同时负责把 Agent 的本机文件上传到平台再随回复回传。
 
 ### 3. 跑通第一条消息
 

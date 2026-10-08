@@ -10,6 +10,15 @@ const reloadShellCommand = `source ~/.zshrc   # 用 bash 的话改成 source ~/.
 hermes`
 const hermesDocsUrl =
   'https://hermes-agent.nousresearch.com/docs/getting-started/installation#without-hermes-desktop'
+const pluginInstallCommand =
+  'hermes plugins install liaosiliangCodeLife/harness-mate-plat/plugin --yes-deps --enable'
+const pluginEnvCommand = `cat >> ~/.hermes/.env <<'EOF'
+HARNESS_MATE_BOT_ID=<bot_id>
+HARNESS_MATE_BOT_KEY=<bot_key>
+EOF`
+const pluginRestartCommand = 'hermes gateway restart'
+const pluginInstallDocUrl =
+  'https://github.com/liaosiliangCodeLife/harness-mate-plat/blob/main/plugin/INSTALL.md'
 
 const copiedKey = ref('')
 let copyResetTimer: ReturnType<typeof setTimeout> | null = null
@@ -126,6 +135,62 @@ onUnmounted(() => {
                 target="_blank"
                 rel="noopener noreferrer"
               >安装说明来自 Hermes 官方文档 →</a>
+            </div>
+          </div>
+          <div class="mt-8 min-w-0">
+            <div class="mb-3 text-lg font-medium text-gray-900">Step Two: 安装 Plugin</div>
+            <div class="min-w-0 rounded-lg border border-gray-300 bg-white p-4">
+              <p class="text-sm leading-6 text-gray-700">
+                1) 先拿身份：平台 → 个人空间 → 智能体右侧「⋯」→「配对 Hermes」，复制弹窗里的 bot_id 与 bot_key。
+              </p>
+              <p class="mt-4 text-sm leading-6 text-gray-700">
+                2) 装插件（一条命令，插件在仓库 plugin/ 子目录）：
+              </p>
+              <div class="mt-2 flex min-w-0 items-start rounded-md bg-gray-100">
+                <pre class="m-0 min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-5 text-gray-800">{{ pluginInstallCommand }}</pre>
+                <button
+                  type="button"
+                  class="m-2 shrink-0 rounded border border-gray-300 bg-white px-2 py-0.5 text-xs text-gray-600 hover:text-gray-900"
+                  @click="copyCommand('plugin-install', pluginInstallCommand)"
+                >
+                  {{ copiedKey === 'plugin-install' ? '已复制' : '复制' }}
+                </button>
+              </div>
+              <p class="mt-4 text-sm leading-6 text-gray-700">
+                3) 写入身份到 ~/.hermes/.env（把 &lt;bot_id&gt;、&lt;bot_key&gt; 换成第 1 步复制的值）。bot_id 与 bot_key 请在「个人空间 → 智能体 → 配对 Hermes」弹窗中复制：
+              </p>
+              <div class="mt-2 flex min-w-0 items-start rounded-md bg-gray-100">
+                <pre class="m-0 min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-5 text-gray-800">{{ pluginEnvCommand }}</pre>
+                <button
+                  type="button"
+                  class="m-2 shrink-0 rounded border border-gray-300 bg-white px-2 py-0.5 text-xs text-gray-600 hover:text-gray-900"
+                  @click="copyCommand('plugin-env', pluginEnvCommand)"
+                >
+                  {{ copiedKey === 'plugin-env' ? '已复制' : '复制' }}
+                </button>
+              </div>
+              <p class="mt-4 text-sm leading-6 text-gray-700">
+                4) 确认网关地址：打开 ~/.hermes/plugins/HarnessMate/adapter.py 第 62 行 WS_GATEWAY_WS_URL，应为平台自己的网关地址（形如 wss://&lt;平台域名&gt;:&lt;端口&gt;/ws）。
+              </p>
+              <p class="mt-4 text-sm leading-6 text-gray-700">
+                5) 重启并验证：hermes gateway restart；日志出现「harness_mate 已连接 WS 网关」即成功，回平台进智能体发一条消息能收到回复即端到端打通。
+              </p>
+              <div class="mt-2 flex min-w-0 items-start rounded-md bg-gray-100">
+                <pre class="m-0 min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-5 text-gray-800">{{ pluginRestartCommand }}</pre>
+                <button
+                  type="button"
+                  class="m-2 shrink-0 rounded border border-gray-300 bg-white px-2 py-0.5 text-xs text-gray-600 hover:text-gray-900"
+                  @click="copyCommand('plugin-restart', pluginRestartCommand)"
+                >
+                  {{ copiedKey === 'plugin-restart' ? '已复制' : '复制' }}
+                </button>
+              </div>
+              <a
+                class="mt-4 inline-block text-xs text-gray-500 hover:text-gray-700"
+                :href="pluginInstallDocUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+              >安装说明见仓库 plugin/INSTALL.md →</a>
             </div>
           </div>
           <div class="mt-8">
