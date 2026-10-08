@@ -8,14 +8,57 @@
 
 目前默认对接 [Hermes Agent](https://hermes-agent.nousresearch.com/)，通道协议是开放的，接别的 Agent 只需要实现一个适配器。
 
+- 🌐 **在线体验**：<https://harness.alltman.com>
+- 📘 **English**：[README.en.md](README.en.md)
+
+---
+
+## Quickstart
+
+把本机 Hermes Agent 接入平台 —— **5 步搞定，实际只要一条命令 + 两个值**。
+
+**1）拿身份**
+
+打开 <https://harness.alltman.com> → 登录 → 「个人空间」→ 智能体卡片右下角「⋯」→「配对 Hermes」。弹窗里的 `bot_id` 与 `bot_key` 就是这两个值；也可以直接点弹窗里的「一键复制安装指令」，把已经填好凭据的脚本整段复制走。
+
+**2）装插件**（插件在本仓库的 `plugin/` 子目录）
+
+```bash
+hermes plugins install liaosiliangCodeLife/harness-mate-plat/plugin --yes-deps --enable
+```
+
+**3）写入身份**（把 `<bot_id>` / `<bot_key>` 换成第 1 步复制的值）
+
+```bash
+cat >> ~/.hermes/.env <<'EOF'
+HARNESS_MATE_BOT_ID=<bot_id>
+HARNESS_MATE_BOT_KEY=<bot_key>
+EOF
+```
+
+**4）确认网关地址**
+
+打开 `~/.hermes/plugins/HarnessMate/adapter.py` 第 62 行 `WS_GATEWAY_WS_URL`，确认它指向你的网关（形如 `wss://<域名>:<端口>/ws`）。接入本仓库部署的网关时无需修改。
+
+**5）重启并验证**
+
+```bash
+hermes gateway restart
+```
+
+日志里出现 `harness_mate 已连接 WS 网关: bot_id=…` 即连上；回到平台进入智能体、发一条消息，能收到回复就代表端到端打通。
+
+> 完整步骤、依赖安装、配置项与排障表见 [plugin/INSTALL.md](plugin/INSTALL.md)。
+
 ---
 
 ## 目录
 
+- [Quickstart](#quickstart)
 - [它解决什么问题](#它解决什么问题)
 - [核心能力](#核心能力)
 - [架构](#架构)
-- [快速开始](#快速开始)
+- [本地开发](#本地开发)
 - [生产部署](#生产部署)
 - [配置说明](#配置说明)
 - [仓库结构](#仓库结构)
@@ -85,7 +128,7 @@ flowchart LR
 - **HTTP 链路（浏览器 → Nginx → api）**：账号、智能体、会话与消息的增删改查、文件上传、开放接口。
 - **WebSocket 链路（浏览器 ⇄ 网关 ⇄ 插件 ⇄ Agent）**：实时消息与流式回复。网关只做鉴权和点对点转发（按 `ws_session_id` 精确投递），不解析业务内容；Agent 侧插件负责和本机 Agent 打交道。
 
-## 快速开始
+## 本地开发
 
 ### 1. 准备
 
@@ -97,7 +140,7 @@ flowchart LR
 curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
 ```
 
-### 2. 本地开发
+### 2. 起各服务
 
 **后端（api）**
 
@@ -126,7 +169,7 @@ go build -o gateway .
 WS_GATEWAY_PORT=8765 ./gateway   # 默认监听 8765，可用环境变量覆盖；JWT 密钥与智能体配置保持一致
 ```
 
-**Agent 侧插件（plugin）**：把 `plugin/` 放到 `~/.hermes/hermes-agent/plugins/platforms/harness_mate/`，在插件配置里填网关地址、`bot_id` 与 `bot_key` 即可连通；它同时负责把 Agent 的本机文件上传到平台再随回复回传。
+**Agent 侧插件（plugin）**：一条命令装进 Hermes —— `hermes plugins install liaosiliangCodeLife/harness-mate-plat/plugin --yes-deps --enable`，再填网关地址、`bot_id` 与 `bot_key` 即可连通；完整步骤见 [plugin/INSTALL.md](plugin/INSTALL.md)。它同时负责把 Agent 的本机文件上传到平台再随回复回传。
 
 ### 3. 跑通第一条消息
 
