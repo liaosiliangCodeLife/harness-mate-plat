@@ -1335,23 +1335,35 @@ def _patch_harness_mate_thread_metadata() -> None:
         logger.debug("harness_mate 跳过 base 线程元数据补丁", exc_info=True)
 
     try:
-        from gateway.run import GatewayRunner
+        # 修复（v0.5.3 在新版 Hermes 上的加载超时问题）：原实现直接
+        # `from gateway.run import GatewayRunner`，在部分 Hermes 进程
+        # （gateway 启动/重载窗口）中会触发 bootstrap relaunch 并长时间
+        # 阻塞插件加载线程（表现为 "load timed out ... import + register()
+        # never returned"，平台注册被丢弃）。改为仅在 gateway.run 已被
+        # 宿主进程加载时打补丁 —— gateway 进程本身必然已加载 gateway.run，
+        # 补丁照常生效；其他场景跳过，不再阻塞注册。
+        import sys as _sys
 
-        _orig_runner = GatewayRunner._thread_metadata_for_source
-
-        def _runner_patched(self, source, reply_to_message_id=None):
-            return _enrich(
-                _orig_runner(self, source, reply_to_message_id),
-                source,
+        _gw_run_module = _sys.modules.get("gateway.run")
+        _GatewayRunner = (
+            getattr(_gw_run_module, "GatewayRunner", None) if _gw_run_module else None
+        )
+        if _GatewayRunner is None:
+            logger.debug(
+                "harness_mate 跳过 GatewayRunner 线程元数据补丁 (gateway.run 未加载)"
             )
+        else:
+            _orig_runner = _GatewayRunner._thread_metadata_for_source
 
-        GatewayRunner._thread_metadata_for_source = _runner_patched
+            def _runner_patched(self, source, reply_to_message_id=None):
+                return _enrich(
+                    _orig_runner(self, source, reply_to_message_id),
+                    source,
+                )
+
+            _GatewayRunner._thread_metadata_for_source = _runner_patched
     except Exception:
         logger.debug("harness_mate 跳过 GatewayRunner 线程元数据补丁", exc_info=True)
-    except SystemExit:
-        # 部分 Hermes 进程 import gateway.run 会触发 bootstrap relaunch/SystemExit，
-        # 不能让它打断平台注册，否则 Channels 页拿不到 required_env 输入框。
-        logger.debug("harness_mate 跳过 GatewayRunner 线程元数据补丁 (SystemExit)")
 
     globals()["_HARNESS_MATE_THREAD_METADATA_PATCHED"] = True
 

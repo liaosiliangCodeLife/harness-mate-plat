@@ -1,7 +1,7 @@
 name: HarnessMate
 label: HarnessMate
 kind: platform
-version: 0.5.3
+version: 0.5.4
 description: Go WS Gateway adapter for Hermes Agent (/ws endpoint, ws_session_id P2P). Configure bot_id + bot_key only for gateway connection.
 author: harness_mate
 requires_env:
