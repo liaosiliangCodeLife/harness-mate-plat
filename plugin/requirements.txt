@@ -1,0 +1,2 @@
+websockets>=12,<15
+PyJWT>=2,<3

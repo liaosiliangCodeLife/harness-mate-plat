@@ -1,0 +1,36 @@
+# 构建上下文排除项。本地 .env 由 compose 注入，不能打进镜像。
+# requirements.txt 不在此列，第一阶段要单独 COPY。
+
+# 虚拟环境与字节码
+/.venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+
+# 版本管理与编辑器（api 目录下当前没有 .git，仍排除）
+.git
+.idea
+.vscode
+.gitattributes
+.gitignore
+.DS_Store
+
+# 开发、测试、文档、本地数据
+/docs
+/test
+/storage
+/tmp
+/pytest.ini
+/requirements-dev.*
+/requirements.in
+/Dockerfile
+/Dockerfile-unstructured
+/README.md
+*.log
+
+# 密钥。只排除这两个名字，避免误伤 requirements.txt
+.env
+.env.example
+
+.dockerignore

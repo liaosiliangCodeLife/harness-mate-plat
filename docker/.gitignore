@@ -1,0 +1,2 @@
+# 含真实密钥，只保留 .env.example
+.env

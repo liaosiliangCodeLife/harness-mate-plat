@@ -1,0 +1,42 @@
+name: HarnessMate
+label: HarnessMate
+kind: platform
+version: 0.5.3
+description: Go WS Gateway adapter for Hermes Agent (/ws endpoint, ws_session_id P2P). Configure bot_id + bot_key only for gateway connection.
+author: harness_mate
+requires_env:
+  - name: HARNESS_MATE_BOT_ID
+    description: HarnessMate Bot ID used when connecting to WS Gateway
+    prompt: Bot ID
+    password: false
+  - name: HARNESS_MATE_BOT_KEY
+    description: HarnessMate Bot key for WS JWT HMAC signing (must match ws_gateway JWT_SECRET)
+    prompt: Bot Key
+    password: true
+optional_env:
+  - name: HARNESS_MATE_ALLOWED_PEERS
+    description: Comma-separated allowed peer ws_session_id values
+    prompt: Allowed peers
+    password: false
+  - name: HARNESS_MATE_ALLOWED_DEVICES
+    description: Comma-separated allowed peer ws_session_id values (legacy alias)
+    prompt: Allowed peers
+    password: false
+  - name: HARNESS_MATE_ALLOW_ALL_DEVICES
+    description: Allow all peers (dev only)
+    prompt: Allow all peers
+    password: false
+  - name: HARNESS_MATE_DM_POLICY
+    description: DM policy (open, allowlist, disabled)
+    prompt: DM policy
+    password: false
+  - name: HARNESS_MATE_UPLOAD_URL
+    description: Upload API host or full URL. Default https://harness.alltman.com/api/open-api/upload-file
+    prompt: Upload URL
+    password: false
+config:
+  bot_id: ""
+  bot_key: ""
+  upload_url: ""
+  dm_policy: open
+  allow_from: []

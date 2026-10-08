@@ -1,0 +1,21 @@
+# 构建上下文排除项。
+# 保留 .env：里面的 VITE_TITLE / VITE_DESCRIPTION 要在 yarn build 时注入。
+# .env.production 也保留，vite build 会读取；Dockerfile 里的 VITE_API_PREFIX 优先级更高。
+
+node_modules
+dist
+dist-ssr
+coverage
+.git
+.idea
+.vscode
+*.log
+.DS_Store
+.dockerignore
+
+# 本地覆盖，生产构建不使用
+*.local
+
+# 不参与 vite 构建
+/docs
+/README.md

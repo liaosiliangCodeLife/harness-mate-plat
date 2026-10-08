@@ -1,0 +1,66 @@
+# -*- coding: utf-8 -*-
+
+# 环境变量与依赖注入
+python-dotenv
+injector
+
+# Flask框架相关
+flask
+flask-login
+flask-migrate
+flask-weaviate
+flask-cors
+flask-sqlalchemy
+flask-wtf
+marshmallow
+concurrent-log-handler
+pywin32>=226; platform_system == "Windows"  # concurrent-log-handler的子依赖，在windows环境下需要
+email-validator
+
+# JWT鉴权
+PyJWT
+
+# LangChain框架相关
+langchain<0.3
+langgraph<0.3
+langchain-community<0.3
+langchain-core<0.3
+langchain-text-splitters<0.3
+langchain-weaviate==0.0.3
+
+# LLM大语言模型相关
+langchain-openai<0.2  # OpenAI
+langchain-ollama<0.2  # Ollama
+dashscope  # 通义千问
+qianfan  # 文心一言
+
+# 自然语言处理与分词
+jieba
+transformers
+pydantic>2.0,<3.0
+pandas
+
+# 并发与异步处理
+celery
+
+# 数据存储与检索
+redis
+psycopg2-binary  # 使用包含预编译C扩展的版本
+faiss-cpu
+cos-python-sdk-v5
+
+# 文件解析
+unstructured[md]
+
+# 内置工具
+requests
+wikipedia
+duckduckgo-search
+python-pptx
+mistune
+
+# 服务器部署
+gunicorn
+
+# 微信公众号开发
+wechatpy

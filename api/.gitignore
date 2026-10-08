@@ -1,0 +1,7 @@
+.env
+tmp/*
+storage/log
+storage/memory
+.idea/*
+venv/*
+test/storage/*
