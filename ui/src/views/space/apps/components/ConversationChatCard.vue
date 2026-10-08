@@ -521,6 +521,20 @@ const isGenerating = computed(
 
 /*
  * @Author Leon-liao
+ * @Function: hasReplyContent
+ * @Description //本轮是否已产出助手正文：非历史、role 为 assistant 且 content 去空白后非空
+ * @Date :2026/10/08 19:15:00
+ * @Param: 无
+ * @return：boolean，已有正文为 true
+ */
+const hasReplyContent = computed(() =>
+  messages.value.some(
+    (item) => item.role === 'assistant' && !item.fromHistory && item.content.trim().length > 0,
+  ),
+)
+
+/*
+ * @Author Leon-liao
  * @Function: clearGenerationIdle()
  * @Description //清掉「长时间没有新帧就结束生成」的计时
  * @Date :2026/10/07 22:40:00
@@ -1128,7 +1142,7 @@ onUnmounted(() => {
     <div class="mt-3 flex flex-shrink-0 flex-col gap-2">
       <div v-if="isGenerating" class="relative mb-1.5 flex h-8 justify-center">
         <div class="absolute left-0 top-[50%] translate-y-[-50%] text-[14px] text-[#374151]">
-          {{ thinking ? '思考中' : '生成中' }}<span class="thinking-dots"><i>.</i><i>.</i><i>.</i></span>
+          {{ thinking || !hasReplyContent ? '思考中' : '生成中' }}<span class="thinking-dots"><i>.</i><i>.</i><i>.</i></span>
         </div>
         <a-button type="outline" class="stop-response" @click="stopGeneration">
           <template #icon>

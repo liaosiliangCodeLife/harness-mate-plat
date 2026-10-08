@@ -46,14 +46,14 @@ const html = computed(() => renderMarkdown(parts.value.text))
         :class="`w-fit max-w-full min-w-0 break-words px-3 py-2 rounded-2xl border ${
           isUser
             ? 'bg-blue-100 border-blue-200 text-gray-700'
-            : 'markdown-body bg-gray-100 border-gray-200 text-gray-700'
+            : 'markdown-body !bg-gray-100 border-gray-200 !text-gray-700'
         }`"
       >
-        <div v-if="message.thinking && !message.content && !parts.files.length" class="text-gray-500">
+        <div
+          v-if="(message.thinking || generating) && !message.content && !parts.files.length"
+          class="text-gray-500"
+        >
           思考中<span class="thinking-dots"><i>.</i><i>.</i><i>.</i></span>
-        </div>
-        <div v-else-if="generating && !message.content && !parts.files.length" class="text-gray-500">
-          生成中…
         </div>
         <template v-else>
           <a-image-preview-group v-if="imageFiles.length">

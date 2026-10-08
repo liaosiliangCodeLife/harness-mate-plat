@@ -4,7 +4,7 @@ import MarkdownIt from 'markdown-it'
 import DotFlashing from '@/components/DotFlashing.vue'
 import { useAudioPlayer } from '@/hooks/use-audio'
 import AgentThought from './AgentThought.vue'
-import 'github-markdown-css'
+import 'github-markdown-css/github-markdown-light.css'
 
 const { textToAudioLoading, isPlaying, startAudioStream, stopAudioStream } = useAudioPlayer()
 

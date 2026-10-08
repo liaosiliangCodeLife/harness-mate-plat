@@ -1,7 +1,7 @@
 import MarkdownIt from 'markdown-it'
 import hljs from 'highlight.js/lib/common'
 import 'highlight.js/styles/github-dark.css'
-import 'github-markdown-css'
+import 'github-markdown-css/github-markdown-light.css'
 
 // 代码块走 highlight.js，风格与现有代码高亮一致
 const highlightCode = (code: string, language: string): string => {
