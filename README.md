@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.png" alt="Harness Mate" width="120" />
+</p>
+
 # Harness Mate
 
 **端到端智能体平台 —— 把你自己电脑上的 AI Agent 变成一个人人可用的 Web 产品。**

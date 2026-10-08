@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.png" alt="Harness Mate" width="120" />
+</p>
+
 # Harness Mate
 
 **An end-to-end agent platform — turn the AI agent running on your own machine into a web product anyone can use.**
