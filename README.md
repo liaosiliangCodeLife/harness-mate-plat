@@ -15,6 +15,16 @@
 - 🌐 **在线体验**：<https://harness.alltman.com>
 - 📘 **English**：[README.en.md](README.en.md)
 
+<p align="center">
+  <img src="assets/demo.gif" alt="Harness Mate 端到端演示：主页 → 个人空间 → 与本地智能体对话" width="880" />
+</p>
+
+<p align="center">
+  <img src="assets/screenshot-home.png" width="270" alt="主页" />
+  <img src="assets/screenshot-space.png" width="270" alt="个人空间" />
+  <img src="assets/screenshot-chat.png" width="270" alt="智能体对话" />
+</p>
+
 ---
 
 ## Quickstart

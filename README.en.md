@@ -15,6 +15,16 @@ It ships with a [Hermes Agent](https://hermes-agent.nousresearch.com/) adapter b
 - 🌐 **Live demo**: <https://harness.alltman.com>
 - 📘 **中文文档**: [README.md](README.md)
 
+<p align="center">
+  <img src="assets/demo.gif" alt="Harness Mate demo: home → workspace → chat with your local agent" width="880" />
+</p>
+
+<p align="center">
+  <img src="assets/screenshot-home.png" width="270" alt="Home" />
+  <img src="assets/screenshot-space.png" width="270" alt="Workspace" />
+  <img src="assets/screenshot-chat.png" width="270" alt="Agent chat" />
+</p>
+
 ---
 
 ## Quickstart
