@@ -244,7 +244,7 @@ Session A (<ws_session_id_A>)      WS Gateway      Session B (<ws_session_id_B>)
 网关 **仅传输** `data` 字段，不定义其内部结构。  
 上层业务协议（如 Hermes Channel）由客户端自行约定，参见：
 
-- [hermes_channel_protocol.md](../agents_plugin/hermes_plugin/hermes_channel_protocol.md)
+- [hermes_channel_protocol.md](../agents_plugin/hermes_plugin/hermes/hermes_channel_protocol.md)
 
 ---
 

@@ -35,10 +35,10 @@ Connect the Hermes Agent on your machine to the platform — **five steps, reall
 
 Open <https://harness.alltman.com> → sign in → "个人空间" (Personal Space) → the agent card's "⋯" menu → "配对 Hermes" (Pair Hermes). The dialog shows this agent's `bot_id` and `bot_key`; you can also click "一键复制安装指令" (Copy install command) to grab a script with the credentials already filled in.
 
-**2) Install the plugin** (it lives in the `plugin/` subdirectory of this repo)
+**2) Install the plugin** (it lives in the `plugin/hermes/` subdirectory of this repo)
 
 ```bash
-hermes plugins install liaosiliangCodeLife/harness-mate-plat/plugin --yes-deps --enable
+hermes plugins install liaosiliangCodeLife/harness-mate-plat/plugin/hermes --yes-deps --enable
 ```
 
 **3) Write the credentials** (replace `<bot_id>` / `<bot_key>` with step 1's values)
@@ -62,7 +62,7 @@ hermes gateway restart
 
 When the log shows `harness_mate 已连接 WS 网关: bot_id=…` you are connected; open the platform, enter the agent and send a message — a reply means the whole path works.
 
-> Full steps, dependency install, configuration and troubleshooting: [plugin/INSTALL.md](plugin/INSTALL.md).
+> Full steps, dependency install, configuration and troubleshooting: [plugin/hermes/INSTALL.md](plugin/hermes/INSTALL.md).
 
 ---
 
@@ -184,7 +184,7 @@ go build -o gateway .
 WS_GATEWAY_PORT=8765 ./gateway   # listens on 8765 by default; keep the JWT secret in sync with the agent config
 ```
 
-**Agent-side plugin (plugin)**: install it into Hermes with one command — `hermes plugins install liaosiliangCodeLife/harness-mate-plat/plugin --yes-deps --enable` — then fill in the gateway address, `bot_id` and `bot_key`. Full steps: [plugin/INSTALL.md](plugin/INSTALL.md). The plugin also uploads the agent's local files to the platform and sends them back with the reply.
+**Agent-side plugin (plugin)**: install it into Hermes with one command — `hermes plugins install liaosiliangCodeLife/harness-mate-plat/plugin/hermes --yes-deps --enable` — then fill in the gateway address, `bot_id` and `bot_key`. Full steps: [plugin/hermes/INSTALL.md](plugin/hermes/INSTALL.md). The plugin also uploads the agent's local files to the platform and sends them back with the reply.
 
 ### 3. Send your first message
 
@@ -232,7 +232,7 @@ docker/    Docker Compose deployment: nginx, certbot, postgres, redis
 ## Protocol docs
 
 - [gateway/ws_gateway_protocol.md](gateway/ws_gateway_protocol.md) — the gateway's WebSocket protocol: connect, authenticate, session ids, message envelope
-- [plugin/hermes_channel_protocol.md](plugin/hermes_channel_protocol.md) — the platform ⇄ agent channel protocol: inbound messages, reply frames, streaming and file fields
+- [plugin/hermes/hermes_channel_protocol.md](plugin/hermes/hermes_channel_protocol.md) — the platform ⇄ agent channel protocol: inbound messages, reply frames, streaming and file fields
 
 Both protocols are independently implementable: swap the agent or swap the frontend, and as long as they follow the docs they interoperate.
 

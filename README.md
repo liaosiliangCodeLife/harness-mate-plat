@@ -35,10 +35,10 @@
 
 打开 <https://harness.alltman.com> → 登录 → 「个人空间」→ 智能体卡片右下角「⋯」→「配对 Hermes」。弹窗里的 `bot_id` 与 `bot_key` 就是这两个值；也可以直接点弹窗里的「一键复制安装指令」，把已经填好凭据的脚本整段复制走。
 
-**2）装插件**（插件在本仓库的 `plugin/` 子目录）
+**2）装插件**（插件在本仓库的 `plugin/hermes/` 子目录）
 
 ```bash
-hermes plugins install liaosiliangCodeLife/harness-mate-plat/plugin --yes-deps --enable
+hermes plugins install liaosiliangCodeLife/harness-mate-plat/plugin/hermes --yes-deps --enable
 ```
 
 **3）写入身份**（把 `<bot_id>` / `<bot_key>` 换成第 1 步复制的值）
@@ -62,7 +62,7 @@ hermes gateway restart
 
 日志里出现 `harness_mate 已连接 WS 网关: bot_id=…` 即连上；回到平台进入智能体、发一条消息，能收到回复就代表端到端打通。
 
-> 完整步骤、依赖安装、配置项与排障表见 [plugin/INSTALL.md](plugin/INSTALL.md)。
+> 完整步骤、依赖安装、配置项与排障表见 [plugin/hermes/INSTALL.md](plugin/hermes/INSTALL.md)。
 
 ---
 
@@ -184,7 +184,7 @@ go build -o gateway .
 WS_GATEWAY_PORT=8765 ./gateway   # 默认监听 8765，可用环境变量覆盖；JWT 密钥与智能体配置保持一致
 ```
 
-**Agent 侧插件（plugin）**：一条命令装进 Hermes —— `hermes plugins install liaosiliangCodeLife/harness-mate-plat/plugin --yes-deps --enable`，再填网关地址、`bot_id` 与 `bot_key` 即可连通；完整步骤见 [plugin/INSTALL.md](plugin/INSTALL.md)。它同时负责把 Agent 的本机文件上传到平台再随回复回传。
+**Agent 侧插件（plugin）**：一条命令装进 Hermes —— `hermes plugins install liaosiliangCodeLife/harness-mate-plat/plugin/hermes --yes-deps --enable`，再填网关地址、`bot_id` 与 `bot_key` 即可连通；完整步骤见 [plugin/hermes/INSTALL.md](plugin/hermes/INSTALL.md)。它同时负责把 Agent 的本机文件上传到平台再随回复回传。
 
 ### 3. 跑通第一条消息
 
@@ -232,7 +232,7 @@ docker/    Docker Compose 部署：nginx、certbot、postgres、redis
 ## 协议文档
 
 - [gateway/ws_gateway_protocol.md](gateway/ws_gateway_protocol.md) —— 网关的 WebSocket 协议：连接、鉴权、会话标识、消息信封
-- [plugin/hermes_channel_protocol.md](plugin/hermes_channel_protocol.md) —— 平台与 Agent 之间的通道协议：入站消息、回复帧、流式与文件字段
+- [plugin/hermes/hermes_channel_protocol.md](plugin/hermes/hermes_channel_protocol.md) —— 平台与 Agent 之间的通道协议：入站消息、回复帧、流式与文件字段
 
 两份协议都是独立可实现的：换一个 Agent、换一个前端，只要遵守它们就能互通。
 

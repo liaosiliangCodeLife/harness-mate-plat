@@ -10,7 +10,7 @@
 
 ```bash
 # 1) 安装（自动装依赖并启用；插件在仓库的 plugin/ 子目录里）
-hermes plugins install liaosiliangCodeLife/harness-mate-plat/plugin --yes-deps --enable
+hermes plugins install liaosiliangCodeLife/harness-mate-plat/plugin/hermes --yes-deps --enable
 
 # 2) 填身份：把 <...> 换成平台侧给你的值
 cat >> ~/.hermes/.env <<'EOF'
@@ -43,7 +43,7 @@ hermes gateway restart        # 重启后插件才会连上网关
 ### 方式 A（推荐）：一条命令
 
 ```bash
-hermes plugins install liaosiliangCodeLife/harness-mate-plat/plugin --yes-deps --enable
+hermes plugins install liaosiliangCodeLife/harness-mate-plat/plugin/hermes --yes-deps --enable
 ```
 
 - 插件在仓库的 `plugin/` 子目录，Hermes 支持 `owner/repo/子目录` 写法（也接受 `https://github.com/owner/repo.git/plugin` 或 `owner/repo#plugin`）。
