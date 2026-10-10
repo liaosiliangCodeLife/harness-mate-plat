@@ -43,6 +43,14 @@ export const deleteAgent = (agent_id: string) => {
   return post<BaseResponse<any>>(`/agents/${agent_id}/delete`)
 }
 
+// 把智能体在线状态写入数据库。1 为在线，0 为离线。失败由调用方自行忽略
+export const updateAgentOnlineStatus = (agent_id: string, status: 0 | 1) => {
+  return post<BaseResponse<{ status: number }>>(`/agents/${agent_id}/online-status`, {
+    body: { status },
+    silent: true,
+  })
+}
+
 // 获取指定智能体详情
 export const getAgent = (agent_id: string) => {
   return get<GetAgentResponse>(`/agents/${agent_id}`)

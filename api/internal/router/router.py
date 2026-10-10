@@ -101,6 +101,11 @@ class Router:
             view_func=self.agent_handler.delete_agent,
         )
         bp.add_url_rule(
+            "/agents/<string:agent_id>/online-status",
+            methods=["POST"],
+            view_func=self.agent_handler.update_online_status,
+        )
+        bp.add_url_rule(
             "/agent/generate-id",
             methods=["GET"],
             view_func=self.agent_handler.generate_agent_id,

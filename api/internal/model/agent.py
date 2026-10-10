@@ -46,7 +46,7 @@ class Agent(db.Model):
     avatar = Column(String(255), nullable=False)  # 头像地址，前端展示智能体头像时使用
     agent_type = Column(String(255), nullable=False, server_default=text("'HERMES'::character varying"))  # 智能体接入类型：HERMES=Hermes Agent 插件接入，DEEPSEEK_HARNESS=DeepSeek harness 接入，OTHER=其它；默认 HERMES
     agent_info = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))  # 智能体详细信息，JSON 扩展配置，默认空对象 {}
-    status = Column(SmallInteger, nullable=False, server_default=text("0"))  # 在线状态：0=离线 1=在线，网关连接或心跳时更新
+    status = Column(SmallInteger, nullable=False, server_default=text("0"))  # 在线状态：0=离线 1=在线，由对话结果写入，读取时直接用这一列
     conversation_count = Column(Integer, nullable=False, server_default=text("0"))  # 该智能体的会话数量，会话增减时维护的冗余计数
     total_token_count = Column(BigInteger, nullable=False, server_default=text("0"))  # 累计 Token 消耗，汇总该智能体下全部会话的用量
     last_seen_at = Column(DateTime, nullable=True)  # 列保留，读取接口不再使用。最后活跃按该智能体未删除会话中 max(message.created_at) 实时统计，没有消息则为空

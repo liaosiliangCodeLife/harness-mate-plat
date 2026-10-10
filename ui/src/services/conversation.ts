@@ -42,15 +42,3 @@ export const updateConversationIsPinned = (conversation_id: string, is_pinned: b
     body: { is_pinned },
   })
 }
-
-// 上报会话在线状态。1 为在线，0 为离线。失败由调用方自行忽略
-export const updateConversationStatus = (
-  agent_id: string,
-  conversation_id: string,
-  status: 0 | 1,
-) => {
-  return post<BaseResponse<any>>(`/agents/${agent_id}/conversations/${conversation_id}`, {
-    body: { status },
-    silent: true,
-  })
-}

@@ -131,6 +131,18 @@ class AgentService(BaseService):
         agent = self.get_agent(agent_id, account_id)
         return self.update(agent, deleted_at=utc_now())
 
+    def update_online_status(self, agent_id: str, account_id: UUID, status: int) -> Agent:
+        """
+        * @Author Leon-liao
+        * @Function: update_online_status(agent_id, account_id, status)
+        * @Description //把智能体在线状态写入 agent.status。不存在或已删除时沿用 get_agent 的未找到错误
+        * @Date :2026/10/10 11:28:00
+        * @Param: agent_id: 智能体 id，字符串；account_id: 当前登录账号 UUID；status: 整数，0 表示离线，1 表示在线
+        * @return：更新后的智能体
+        """
+        agent = self.get_agent(agent_id, account_id)
+        return self.update(agent, status=status)
+
     def _attach_live_last_seen(self, agents: list[Agent]) -> None:
         """按 message 表统计每个智能体最近一条消息时间，挂到实例上供 schema 读取。
 

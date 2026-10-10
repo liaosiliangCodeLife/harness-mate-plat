@@ -21,7 +21,6 @@ from wtforms.validators import (
     ValidationError,
 )
 
-from internal.lib.agent_online import is_online
 from internal.lib.helper import datetime_to_timestamp
 from internal.model import Agent, Server
 from pkg.paginator import PaginatorReq
@@ -178,7 +177,7 @@ class GetAgentResp(Schema):
         """把智能体模型转成接口字段，网关地址与密钥取自关联的 server，时间转为时间戳。
 
         last_seen_at 只取查询挂上的 message 表实时统计，不读 agent.last_seen_at 列。
-        status 看该智能体名下是否有 90 秒内仍在线的会话，不直接回 agent.status 列。
+        status 直接读 agent.status 列，不做时间窗计算。
         """
         last_seen_at = inspect(data).info.get("live_last_seen_at")
         return {
@@ -190,7 +189,7 @@ class GetAgentResp(Schema):
             "avatar": data.avatar,
             "agent_type": data.agent_type or "HERMES",
             "agent_info": data.agent_info if data.agent_info is not None else {},
-            "status": 1 if is_online(data.id) else 0,
+            "status": 1 if data.status == 1 else 0,
             "conversation_count": data.conversation_count,
             "total_token_count": data.total_token_count,
             "last_seen_at": datetime_to_timestamp(last_seen_at) if last_seen_at else None,
@@ -321,6 +320,42 @@ class UpdateAgentReq(FlaskForm):
             agent_info = self.agent_info.data if isinstance(self.agent_info.data, dict) else {}
             update_data["agent_info"] = agent_info
         return update_data
+
+
+class StrictIntegerField(IntegerField):
+    """整数字段：只接受 JSON 整数，布尔值和其它类型留给校验器报错"""
+
+    def process_formdata(self, valuelist):
+        """保留原始类型，避免把 true 或字符串先转成整数"""
+        if not valuelist:
+            return
+        value = valuelist[0]
+        if isinstance(value, bool) or not isinstance(value, int):
+            self.data = None
+            return
+        self.data = value
+
+
+class IsOnlineStatus:
+    """校验在线状态只能是整数 0 或 1。0 不能交给 DataRequired，否则会被当成空值"""
+
+    def __call__(self, form, field):
+        """缺字段、非整数、以及 0/1 以外的值分别返回中文校验错误"""
+        if not field.raw_data:
+            raise ValidationError("在线状态不能为空")
+        value = field.raw_data[0]
+        if isinstance(value, bool) or not isinstance(value, int):
+            raise ValidationError("在线状态必须是整数")
+        if value not in (0, 1):
+            raise ValidationError("在线状态只能是0或1")
+
+
+class UpdateAgentOnlineStatusReq(FlaskForm):
+    """更新智能体在线状态请求"""
+
+    status = StrictIntegerField("status", validators=[
+        IsOnlineStatus(),
+    ])
 
 
 class GenerateAgentIdReq(FlaskForm):

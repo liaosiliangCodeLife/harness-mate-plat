@@ -23,7 +23,7 @@ import {
 } from '@/services/agent'
 import { useDeleteAgentConversation, useUpdateAgentConversation } from '@/hooks/use-agent'
 import { useHermesChannel } from '@/hooks/use-hermes-channel'
-import { updateConversationStatus } from '@/services/conversation'
+import { updateAgentOnlineStatus } from '@/services/agent'
 import { uploadFile, uploadImage } from '@/services/upload-file'
 import { useAccountStore } from '@/stores/account'
 import { normalizeChatFiles } from '@/utils/chat-files'
@@ -143,7 +143,61 @@ let stopRequested = false
 let acceptReplies = true
 // 最后一帧之后仍停在生成中，就本地结束。流式中间帧会把这个计时重置
 const GENERATION_IDLE_MS = 20_000
+const REPLY_TIMEOUT_MS = 90_000
 let generationIdleTimer: number | undefined
+let replyTimeoutTimer: number | undefined
+
+/*
+ * @Author Leon-liao
+ * @Function: reportAgentOnlineStatus(nextStatus)
+ * @Description //把智能体在线状态写入数据库，成功后刷新详情头部
+ * @Date :2026/10/10 11:28:00
+ * @Param: nextStatus: 0 离线，1 在线
+ * @return：无
+ */
+const reportAgentOnlineStatus = (nextStatus: 0 | 1) => {
+  const agentId = props.agent?.id
+  if (!agentId) {
+    return
+  }
+  void updateAgentOnlineStatus(agentId, nextStatus)
+    .then(() => {
+      reloadDetailAgent?.()
+    })
+    .catch(() => undefined)
+}
+
+/*
+ * @Author Leon-liao
+ * @Function: clearReplyTimeout()
+ * @Description //取消「发出后一直没有回复帧」的一次性计时，不上报离线
+ * @Date :2026/10/10 11:28:00
+ * @Param: 无
+ * @return：无
+ */
+const clearReplyTimeout = () => {
+  if (replyTimeoutTimer === undefined) {
+    return
+  }
+  window.clearTimeout(replyTimeoutTimer)
+  replyTimeoutTimer = undefined
+}
+
+/*
+ * @Author Leon-liao
+ * @Function: armReplyTimeout()
+ * @Description //消息发出后只计时一次，90 秒内没有任何回复帧就写离线
+ * @Date :2026/10/10 11:28:00
+ * @Param: 无
+ * @return：无
+ */
+const armReplyTimeout = () => {
+  clearReplyTimeout()
+  replyTimeoutTimer = window.setTimeout(() => {
+    replyTimeoutTimer = undefined
+    reportAgentOnlineStatus(0)
+  }, REPLY_TIMEOUT_MS)
+}
 // 思考帧经常不带 message_id，先暂存，等这条回复的正文帧再带上
 let carriedReasoning = ''
 let carriedToolEvents: unknown[] = []
@@ -486,6 +540,7 @@ const handleReply = (payload: HermesReplyData) => {
   if (!acceptReplies) {
     return
   }
+  clearReplyTimeout()
   const result = reduceHermesReply(messages.value, thinking.value, payload)
   let nextMessages = result.messages.filter((item) => !item.id.startsWith('ws:pending:'))
   let nextThinking = result.thinking
@@ -516,6 +571,9 @@ const handleReply = (payload: HermesReplyData) => {
   thinking.value = nextThinking
   if (!stopRequested) {
     persistHermesReply(payload)
+  }
+  if (done && !stopRequested) {
+    reportAgentOnlineStatus(1)
   }
   if (
     thinking.value ||
@@ -632,6 +690,7 @@ const releaseGeneration = (finalStatus: 1 | 2) => {
  * @return：无
  */
 const stopGeneration = () => {
+  clearReplyTimeout()
   const sent = sendText('/stop')
   if (!sent) {
     Message.error('停止指令发送失败')
@@ -650,57 +709,23 @@ const { status, gatewayReady, start, sendText } = useHermesChannel({
   onReply: handleReply,
 })
 
-const ONLINE_HEARTBEAT_MS = 60_000
-let onlineHeartbeatTimer: number | undefined
-
-const reportConversationOnline = async (online: boolean) => {
-  const agentId = props.agent?.id
-  const conversationId = props.conversation?.id
-  if (!agentId || !conversationId) {
-    return
-  }
-  try {
-    await updateConversationStatus(agentId, conversationId, online ? 1 : 0)
-  } catch {
-    // 心跳失败不影响当前会话
-  }
-}
-
-const stopOnlineHeartbeat = () => {
-  if (onlineHeartbeatTimer === undefined) {
-    return
-  }
-  window.clearInterval(onlineHeartbeatTimer)
-  onlineHeartbeatTimer = undefined
-}
-
-const startOnlineHeartbeat = () => {
-  stopOnlineHeartbeat()
-  onlineHeartbeatTimer = window.setInterval(() => {
-    if (status.value === 'connected') {
-      reportConversationOnline(true)
-    }
-  }, ONLINE_HEARTBEAT_MS)
-}
-
-watch(status, (value) => {
-  if (value === 'connected') {
-    void reportConversationOnline(true).then(() => {
-      reloadDetailAgent?.()
-    })
-    startOnlineHeartbeat()
-    return
-  }
-  stopOnlineHeartbeat()
-})
-
-const inputDisabled = computed(() => !gatewayReady.value || status.value !== 'connected')
+const inputDisabled = computed(
+  () => status.value === 'connecting' || status.value === 'reconnecting',
+)
 
 // 9.先把用户消息上屏并落库，再只把当前文本发给 Hermes，不携带历史
 // 附件在发送时按一行一个 markdown 链接接在正文末尾，URL 原样保留
 const send = () => {
   const text = buildOutgoingText()
-  if (!text || inputDisabled.value) {
+  if (!text) {
+    return
+  }
+  if (status.value === 'connecting' || status.value === 'reconnecting') {
+    return
+  }
+  if (status.value !== 'connected') {
+    reportAgentOnlineStatus(0)
+    Message.error('消息发送失败')
     return
   }
   const clientMsgId = crypto.randomUUID()
@@ -737,8 +762,13 @@ const send = () => {
   armGenerationIdle()
   persistUserMessage(clientMsgId, text, files)
   const sent = sendText(text)
+  if (sent) {
+    armReplyTimeout()
+  }
   if (!sent) {
     clearGenerationIdle()
+    clearReplyTimeout()
+    reportAgentOnlineStatus(0)
     Message.error('消息发送失败')
     const failId = crypto.randomUUID()
     messages.value = [
@@ -1040,7 +1070,7 @@ onUnmounted(() => {
   listResizeObserver = null
   listRef.value?.removeEventListener('load', onListMediaLoad, true)
   clearGenerationIdle()
-  stopOnlineHeartbeat()
+  clearReplyTimeout()
   if (isFullscreen.value) {
     document.body.style.overflow = bodyOverflowBeforeFullscreen
   }

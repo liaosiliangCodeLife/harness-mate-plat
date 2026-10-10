@@ -19,6 +19,7 @@ from internal.schema.agent_schema import (
     GetAgentResp,
     GetAgentsWithPageReq,
     GetAgentsWithPageResp,
+    UpdateAgentOnlineStatusReq,
     UpdateAgentReq,
 )
 from internal.service import AgentService
@@ -123,6 +124,29 @@ class AgentHandler:
         """软删除指定智能体"""
         self.agent_service.delete_agent(agent_id, current_user.id)
         return success_message("删除智能体成功")
+
+    @login_required
+    def update_online_status(self, agent_id: str):
+        """
+        * @Author Leon-liao
+        * @Function: update_online_status(agent_id)
+        * @Description //把当前账号下指定智能体的在线状态写成请求体里的 0 或 1
+        * @Date :2026/10/10 11:28:00
+        * @Param: agent_id: 路由里的智能体 id，字符串
+        * @return：success_json，data 为写入后的 status
+        """
+        invalid_body = _validate_json_object()
+        if invalid_body is not None:
+            return invalid_body
+        req = UpdateAgentOnlineStatusReq()
+        if not req.validate():
+            return validate_error_json(req.errors)
+        agent = self.agent_service.update_online_status(
+            agent_id,
+            current_user.id,
+            req.status.data,
+        )
+        return success_json({"status": agent.status})
 
     @login_required
     def generate_agent_id(self):

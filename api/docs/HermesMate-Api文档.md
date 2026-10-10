@@ -539,7 +539,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MTY0NTY3O
       - `name -> str`：智能体名称，用于列表和详情展示，类型为字符串。
       - `avatar -> str`：智能体头像的 URL 地址，类型为字符串。
       - `agent_info -> dict`：智能体扩展信息，类型为字典，默认为 `{}`。
-      - `status -> int`：该智能体名下是否有在线会话（90 秒内有心跳），`0` 代表离线、`1` 代表在线，类型为整型。
+      - `status -> int`：智能体在线状态，直接读 `agent.status` 列，`0` 代表离线、`1` 代表在线，类型为整型。由 `POST /agents/:agent_id/online-status` 写入，打开页面时不做实时计算。
       - `conversation_count -> int`：该智能体的会话数量，类型为整型。
       - `total_token_count -> int`：该智能体累计消耗的 Token 数量，类型为整型。
       - `last_seen_at -> int`：智能体最后活跃时间戳，类型为整型，尚未活跃时为 `null`。
@@ -613,7 +613,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MTY0NTY3O
     - `name -> str`：智能体名称，类型为字符串。
     - `avatar -> str`：智能体头像的 URL 地址，类型为字符串。
     - `agent_info -> dict`：智能体扩展信息，类型为字典，默认为 `{}`。
-    - `status -> int`：该智能体名下是否有在线会话（90 秒内有心跳），`0` 代表离线、`1` 代表在线，类型为整型。
+    - `status -> int`：智能体在线状态，直接读 `agent.status` 列，`0` 代表离线、`1` 代表在线，类型为整型。由 `POST /agents/:agent_id/online-status` 写入，打开页面时不做实时计算。
     - `conversation_count -> int`：该智能体的会话数量，类型为整型。
     - `total_token_count -> int`：该智能体累计消耗的 Token 数量，类型为整型。
     - `last_seen_at -> int`：智能体最后活跃时间戳，类型为整型，尚未活跃时为 `null`。
@@ -762,6 +762,50 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MTY0NTY3O
   }
   ```
 
+### 4.5.1 更新智能体在线状态
+
+- **接口说明**：该接口用于把指定智能体的在线状态写入 `agent.status`。最近一次对话成功时写 `1`（在线），对话失败或智能体没有反应时写 `0`（离线）。列表和详情直接读这一列，不做 90 秒时间窗计算。
+
+- **接口信息**：`授权`+`POST:/agents/:agent_id/online-status`
+
+- **接口参数**：
+
+  - 请求参数：
+    - `agent_id -> uuid`：路由参数，需要更新在线状态的智能体 id，类型为 uuid。
+    - `status -> int`：必填，只能是整数 `0` 或 `1`。`0` 代表离线，`1` 代表在线。
+  - 响应参数：
+    - `status -> int`：写入后的在线状态，类型为整型。
+
+- **请求示例**：
+
+  ```bash
+  POST:/agents/1550b71a-1444-47ed-a59d-c2f080fbae94/online-status
+  
+  {
+  	"status": 1
+  }
+  ```
+
+- **响应示例**：
+
+  ```json
+  {
+      "code": "success",
+      "data": {
+          "status": 1
+      },
+      "message": ""
+  }
+  ```
+
+- **错误**：
+  - 未登录：`unauthorized`。
+  - 请求体不是 JSON 对象：`validate_error`，提示「请求体必须是JSON对象」。
+  - 未提交 `status`：`validate_error`，提示「在线状态不能为空」。
+  - `status` 不是整数（含布尔值、字符串）：`validate_error`，提示「在线状态必须是整数」。
+  - `status` 不是 `0` 或 `1`：`validate_error`，提示「在线状态只能是0或1」。
+  - 智能体不存在、已删除，或不属于当前账号：`not_found`，提示「智能体不存在」。
+
 ### 4.6 获取会话分页列表
 
 - **接口说明**：该接口用于分页获取指定智能体下的会话列表，支持按会话标题进行模糊搜索，分页数据固定返回 `list` 和 `paginator` 字段；列表项除会话自身字段外，会一并返回会话所属智能体的 `bot_id`、`peer_id`、`gateway_url` 与 `gateway_key`（其中网关地址与密钥取自智能体关联的 WS 网关，`agent.gateway_id` → `server.id`，未关联时返回空字符串），前端拿到列表即可直接连接网关，无需再单独查询智能体。
@@ -902,7 +946,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MTY0NTY3O
     - `title -> str`：可选参数，会话的新标题，类型为字符串。
     - `pinned -> int`：可选参数，是否置顶，`0` 代表否、`1` 代表是，类型为整型。
     - `status -> int`：可选参数。`1` 表示该会话在线，`0` 表示该会话离线。请求体带上 `status` 时，服务端同时把 `online_at` 写成当前 UTC 时间。不传 `status` 时不改在线心跳，改标题、置顶的行为保持不变。
-    - `online_at`：不由调用方传入。只要本次请求提交了 `status`，服务端就把它写成当前 UTC 时间。智能体列表和详情的 `status` 看其名下未删除会话是否存在 `status=1` 且 `online_at` 在 90 秒内。
+    - `online_at`：不由调用方传入。只要本次请求提交了 `status`，服务端就把它写成当前 UTC 时间。智能体列表和详情的 `status` 不再根据该字段计算，改为直接读 `agent.status`。
     - `conversation_info -> dict`：可选参数，会话扩展信息，类型为字典，传递时进行增量合并。
   - 响应参数：无。
 
