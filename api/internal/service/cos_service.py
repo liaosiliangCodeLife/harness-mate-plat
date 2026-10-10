@@ -16,6 +16,7 @@ from qcloud_cos import CosS3Client, CosConfig
 from werkzeug.datastructures import FileStorage
 
 from internal.entity.upload_file_entity import (
+    ALLOWED_ARCHIVE_EXTENSION,
     ALLOWED_AUDIO_EXTENSION,
     ALLOWED_DOCUMENT_EXTENSION,
     ALLOWED_IMAGE_EXTENSION,
@@ -45,6 +46,7 @@ class CosService:
             + ALLOWED_DOCUMENT_EXTENSION
             + ALLOWED_AUDIO_EXTENSION
             + ALLOWED_VIDEO_EXTENSION
+            + ALLOWED_ARCHIVE_EXTENSION
         )
         if extension.lower() not in allowed_extensions:
             raise FailException(f"该.{extension}扩展的文件不允许上传")

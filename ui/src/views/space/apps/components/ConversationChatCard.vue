@@ -45,10 +45,29 @@ const DOCUMENT_EXTENSIONS = new Set([
   'docx',
   'csv',
 ])
-const UPLOAD_ACCEPT = [...IMAGE_EXTENSIONS, ...DOCUMENT_EXTENSIONS]
+const ARCHIVE_EXTENSIONS = new Set([
+  'zip',
+  'rar',
+  '7z',
+  'tar',
+  'gz',
+  'tgz',
+  'bz2',
+  'tbz',
+  'tbz2',
+  'xz',
+  'txz',
+  'zst',
+  'zipx',
+  'cab',
+  'jar',
+  'war',
+])
+const UPLOAD_ACCEPT = [...IMAGE_EXTENSIONS, ...DOCUMENT_EXTENSIONS, ...ARCHIVE_EXTENSIONS]
   .map((item) => `.${item}`)
   .join(',')
 const MAX_UPLOAD_BYTES = 15 * 1024 * 1024
+const MAX_ARCHIVE_UPLOAD_BYTES = 100 * 1024 * 1024
 const MAX_ATTACHMENT_COUNT = 5
 
 type ChatAttachment = {
@@ -689,6 +708,7 @@ const send = () => {
   const files: ChatFile[] = attachments.value.map((item) => ({
     name: item.name,
     url: item.url,
+    media_kind: item.isImage ? 'image' : 'file',
     is_image: item.isImage,
     size: item.size,
   }))
@@ -893,14 +913,16 @@ const onFileChange = async (event: Event) => {
   }
   const extension = fileExtension(file.name)
   const isImage = IMAGE_EXTENSIONS.has(extension)
-  if (!isImage && !DOCUMENT_EXTENSIONS.has(extension)) {
+  const isArchive = ARCHIVE_EXTENSIONS.has(extension)
+  if (!isImage && !DOCUMENT_EXTENSIONS.has(extension) && !isArchive) {
     Message.error(
-      '仅支持上传 jpg、jpeg、png、webp、gif、svg、txt、markdown、md、pdf、html、htm、xlsx、xls、doc、docx、csv 文件',
+      '仅支持上传 jpg、jpeg、png、webp、gif、svg、txt、markdown、md、pdf、html、htm、xlsx、xls、doc、docx、csv、zip、rar、7z、tar、gz、tgz、bz2、tbz、tbz2、xz、txz、zst、zipx、cab、jar、war 文件',
     )
     return
   }
-  if (file.size > MAX_UPLOAD_BYTES) {
-    Message.error('单个文件不能超过 15MB')
+  const maxBytes = isArchive ? MAX_ARCHIVE_UPLOAD_BYTES : MAX_UPLOAD_BYTES
+  if (file.size > maxBytes) {
+    Message.error(isArchive ? '压缩包最大不能超过100MB' : '单个文件不能超过 15MB')
     return
   }
   uploading.value = true

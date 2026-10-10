@@ -13,6 +13,8 @@ const props = defineProps({
   callback: { type: Function, required: false },
   // 传入智能体时进入编辑模式，不传则是新建
   agent: { type: Object as PropType<Agent | null>, default: null },
+  // 新建时写入当前列表页的接入类型，编辑接口不接收该字段
+  agentType: { type: String, default: 'HERMES' },
 })
 const emits = defineEmits(['update:visible'])
 const buildForm = () => ({
@@ -240,6 +242,7 @@ const saveAgent = async ({ errors }: { errors: Record<string, ValidatedError> | 
     name: form.value.name.trim(),
     bot_id: form.value.bot_id.trim(),
     peer_id: form.value.peer_id.trim(),
+    agent_type: props.agentType,
   }
   const avatar = form.value.avatar.trim()
   const gatewayId = `${form.value.gateway_id ?? ''}`.trim()

@@ -6,11 +6,15 @@
  * @Time: 2026/10/07 21:10:00
  * @All Rights Reserve By Brtc
  */
-import type { ChatFile } from '@/models/agent-message'
+import type { ChatFile, ChatMediaKind } from '@/models/agent-message'
 
 const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'])
+const AUDIO_EXTENSIONS = new Set(['mp3', 'm4a', 'wav', 'ogg', 'opus', 'flac', 'aac'])
+const VIDEO_EXTENSIONS = new Set(['mp4', 'mov', 'webm', 'mkv', 'avi'])
 const FILE_EXTENSIONS = new Set([
   ...IMAGE_EXTENSIONS,
+  ...AUDIO_EXTENSIONS,
+  ...VIDEO_EXTENSIONS,
   'txt',
   'markdown',
   'md',
@@ -22,7 +26,24 @@ const FILE_EXTENSIONS = new Set([
   'doc',
   'docx',
   'csv',
+  'zip',
+  'rar',
+  '7z',
+  'tar',
+  'gz',
+  'tgz',
+  'bz2',
+  'tbz',
+  'tbz2',
+  'xz',
+  'txz',
+  'zst',
+  'zipx',
+  'cab',
+  'jar',
+  'war',
 ])
+const MEDIA_KINDS = new Set<ChatMediaKind>(['image', 'audio', 'video', 'file'])
 
 /*
  * @Author Leon-liao
@@ -70,6 +91,64 @@ const unescapeLabel = (label: string) => {
 
 /*
  * @Author Leon-liao
+ * @Function: mediaKindFor(url, mediaType, isImage)
+ * @Description //按 media_type、MIME 前缀和扩展名决定渲染类型，图片、音频、视频优先于普通文件
+ * @Date :2026/10/09 08:05:00
+ * @Param: url: 文件地址，字符串；mediaType: reply 里的 media_type 或 MIME，可空；isImage: 历史数据里的图片标记，可空
+ * @return：image、audio、video 或 file
+ */
+const mediaKindFor = (url: string, mediaType = '', isImage = false): ChatMediaKind => {
+  const kind = mediaType.trim().toLowerCase()
+  if (kind === 'audio' || kind.startsWith('audio/')) {
+    return 'audio'
+  }
+  if (kind === 'video' || kind.startsWith('video/')) {
+    return 'video'
+  }
+  if (kind === 'image' || kind.startsWith('image/') || isImage) {
+    return 'image'
+  }
+  const extension = extensionFromUrl(url)
+  if (IMAGE_EXTENSIONS.has(extension)) {
+    return 'image'
+  }
+  if (VIDEO_EXTENSIONS.has(extension)) {
+    return 'video'
+  }
+  if (AUDIO_EXTENSIONS.has(extension)) {
+    return 'audio'
+  }
+  return 'file'
+}
+
+/*
+ * @Author Leon-liao
+ * @Function: asChatFile(file)
+ * @Description //补齐 media_kind，并让 is_image 与它保持一致
+ * @Date :2026/10/09 08:05:00
+ * @Param: file: 名称、地址，以及可选的类型、图片标记和大小
+ * @return：可渲染的 ChatFile
+ */
+const asChatFile = (file: {
+  name: string
+  url: string
+  media_kind?: ChatMediaKind
+  media_type?: string
+  is_image?: boolean
+  size?: number
+}): ChatFile => {
+  const mediaKind = file.media_kind || mediaKindFor(file.url, file.media_type || '', file.is_image === true)
+  return {
+    name: file.name,
+    url: file.url,
+    media_kind: mediaKind,
+    is_image: mediaKind === 'image',
+    size: file.size,
+  }
+}
+
+/*
+ * @Author Leon-liao
  * @Function: normalizeChatFiles(value: unknown)
  * @Description //把 message_info.files 收成可渲染的文件列表，丢掉没有地址的项
  * @Date :2026/10/07 21:10:00
@@ -81,7 +160,7 @@ const unescapeLabel = (label: string) => {
  * @Function: chatFileFromReply(payload)
  * @Description //把 Hermes reply 里扁平的 url / file_name / media_type 收成一个 ChatFile
  * @Date :2026/10/07 22:36:30
- * @Param: payload.url: 文件地址；payload.file_name: 文件名，可空；payload.media_type: 类型，image 表示图片，可空
+ * @Param: payload.url: 文件地址；payload.file_name: 文件名，可空；payload.media_type: image、audio、video、file 或 MIME，可空
  * @return：可渲染的文件；地址为空或不是 http(s) 时返回 null
  */
 export const chatFileFromReply = (payload: {
@@ -108,11 +187,7 @@ export const chatFileFromReply = (payload: {
   const name = rawName || fileNameFromUrl(url)
   const mediaType =
     typeof payload.media_type === 'string' ? payload.media_type.trim().toLowerCase() : ''
-  const isImage =
-    mediaType === 'image' ||
-    mediaType.startsWith('image/') ||
-    IMAGE_EXTENSIONS.has(extensionFromUrl(url))
-  return { name, url, is_image: isImage }
+  return asChatFile({ name, url, media_type: mediaType })
 }
 
 export const normalizeChatFiles = (value: unknown): ChatFile[] => {
@@ -134,12 +209,20 @@ export const normalizeChatFiles = (value: unknown): ChatFile[] => {
         ? record.name.trim()
         : fileNameFromUrl(url)
     const size = typeof record.size === 'number' && record.size >= 0 ? record.size : undefined
-    files.push({
-      name,
-      url,
-      is_image: record.is_image === true || IMAGE_EXTENSIONS.has(extensionFromUrl(url)),
-      size,
-    })
+    const storedKind = typeof record.media_kind === 'string' ? record.media_kind : ''
+    const mediaType = typeof record.media_type === 'string' ? record.media_type : ''
+    files.push(
+      asChatFile({
+        name,
+        url,
+        media_kind: MEDIA_KINDS.has(storedKind as ChatMediaKind)
+          ? (storedKind as ChatMediaKind)
+          : undefined,
+        media_type: mediaType,
+        is_image: record.is_image === true,
+        size,
+      }),
+    )
   })
   return files
 }
@@ -161,25 +244,31 @@ export const splitMessageFiles = (content: string, explicit?: ChatFile[]) => {
       return
     }
     seen.add(url)
-    files.push({ ...file, url, name: file.name?.trim() || fileNameFromUrl(url) })
+    files.push(
+      asChatFile({
+        ...file,
+        url,
+        name: file.name?.trim() || fileNameFromUrl(url),
+      }),
+    )
   })
   const text = (content || '').replace(
     /(!?)\[((?:\\.|[^\]])*)\]\(([^)\s]+)\)/g,
     (full, bang: string, label: string, rawUrl: string) => {
       const url = String(rawUrl || '').trim()
       const extension = extensionFromUrl(url)
-      const isImage = bang === '!' || IMAGE_EXTENSIONS.has(extension)
-      const isFile = isImage || FILE_EXTENSIONS.has(extension)
-      if (!url || !isFile) {
+      if (!url || !(bang === '!' || FILE_EXTENSIONS.has(extension))) {
         return full
       }
       if (!seen.has(url)) {
         seen.add(url)
-        files.push({
-          name: unescapeLabel(label) || fileNameFromUrl(url),
-          url,
-          is_image: isImage,
-        })
+        files.push(
+          asChatFile({
+            name: unescapeLabel(label) || fileNameFromUrl(url),
+            url,
+            media_kind: bang === '!' ? 'image' : mediaKindFor(url),
+          }),
+        )
       }
       return ''
     },

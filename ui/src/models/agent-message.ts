@@ -48,10 +48,14 @@ export type UpsertAgentMessageRequest = {
   message_latency?: number
 }
 
-// 消息携带的文件。is_image 为真时按图片渲染，否则按文件卡片渲染
+// 气泡里怎么渲染这个文件
+export type ChatMediaKind = 'image' | 'audio' | 'video' | 'file'
+
+// 消息携带的文件。渲染以 media_kind 为准，is_image 与 media_kind === 'image' 保持一致
 export type ChatFile = {
   name: string
   url: string
+  media_kind: ChatMediaKind
   is_image: boolean
   size?: number
 }

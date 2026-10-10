@@ -93,6 +93,7 @@ class AgentHandler:
             avatar=req.avatar.data or "",
             agent_info=req.agent_info.data if isinstance(req.agent_info.data, dict) else {},
             gateway_id=req.gateway_id.data or None,
+            agent_type=(req.agent_type.data or "HERMES").upper(),
         )
 
         # 3.返回新建智能体 id

@@ -1,8 +1,16 @@
+<script setup lang="ts">
+import AgentListView from '@/views/space/apps/components/AgentListView.vue'
+
+const props = defineProps({
+  listVersion: { type: Number, default: 0 },
+})
+const emits = defineEmits(['edit-agent'])
+</script>
+
 <template>
-  <div class="flex h-full w-full items-center justify-center">
-    <div class="text-center">
-      <div class="text-base font-medium text-gray-900">Deepseek Harness</div>
-      <div class="mt-2 text-sm text-gray-400">正在开发中</div>
-    </div>
-  </div>
+  <agent-list-view
+    agent-type="DEEPSEEK_HARNESS"
+    :list-version="props.listVersion"
+    @edit-agent="(agent) => emits('edit-agent', agent)"
+  />
 </template>

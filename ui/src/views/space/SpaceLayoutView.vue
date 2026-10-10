@@ -40,9 +40,16 @@ const openEditAgent = (agent: Agent) => {
   createAgentModalVisible.value = true
 }
 
+const isAgentListPage = computed(
+  () => route.path.startsWith('/space/apps') || route.path.startsWith('/space/deepseek-harness'),
+)
+const currentAgentType = computed(() =>
+  route.path.startsWith('/space/deepseek-harness') ? 'DEEPSEEK_HARNESS' : 'HERMES',
+)
+
 // 只在智能体列表页监听编辑事件
 const listListeners = computed(() => {
-  if (route.name !== 'space-apps-list') {
+  if (route.name !== 'space-apps-list' && route.name !== 'space-deepseek-harness') {
     return {}
   }
   return {
@@ -93,7 +100,7 @@ watch(
         </div>
         <!-- 创建按钮 -->
         <a-button
-          v-if="route.path.startsWith('/space/apps')"
+          v-if="isAgentListPage"
           type="primary"
           class="rounded-lg"
           @click="openCreateAgent"
@@ -117,12 +124,12 @@ watch(
             class="rounded-lg text-gray-700 px-3 h-8 leading-8 hover:bg-gray-200 transition-all"
             active-class="bg-gray-100"
           >
-            Deepseek Harness
+            DeepSeekHarness智能体
           </router-link>
         </div>
         <!-- 右侧搜索，仅智能体列表需要 -->
         <a-input-search
-          v-if="route.path.startsWith('/space/apps')"
+          v-if="isAgentListPage"
           v-model="searchWord"
           placeholder="输入关键词进行搜索"
           class="w-[240px] bg-white rounded-lg border-gray-300"
@@ -133,13 +140,19 @@ watch(
     <!-- 中间内容 -->
     <div class="flex-1 min-h-0">
       <router-view v-slot="{ Component }">
-        <component :is="Component" :list-version="agentListVersion" v-on="listListeners" />
+        <component
+          :is="Component"
+          :key="route.path"
+          :list-version="agentListVersion"
+          v-on="listListeners"
+        />
       </router-view>
     </div>
     <!-- 创建智能体模态窗 -->
     <create-agent-modal
       v-model:visible="createAgentModalVisible"
       :agent="editingAgent"
+      :agent-type="currentAgentType"
       :callback="() => (agentListVersion += 1)"
     />
   </div>

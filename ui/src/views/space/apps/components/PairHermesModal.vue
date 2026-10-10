@@ -29,13 +29,16 @@ const installCommand = computed(() => {
     return ''
   }
   return [
-    '# 1) 装插件（一条命令，插件在仓库 plugin/ 子目录）：',
-    'hermes plugins install liaosiliangCodeLife/harness-mate-plat/plugin --yes-deps --enable',
+    '# 1) 装插件（一条命令，插件在仓库 plugin/hermes 子目录）：',
+    'hermes plugins install liaosiliangCodeLife/harness-mate-plat/plugin/hermes --yes-deps --enable',
     '',
     '# 2) 写入身份到 ~/.hermes/.env：',
     "cat >> ~/.hermes/.env <<'EOF'",
     `HARNESS_MATE_BOT_ID=${botId}`,
     `HARNESS_MATE_BOT_KEY=${botKey}`,
+    '# 默认放行所有 peer（如需收紧再配 HARNESS_MATE_ALLOWED_PEERS）',
+    'HARNESS_MATE_DM_POLICY=open',
+    'HARNESS_MATE_ALLOW_ALL_DEVICES=1',
     'EOF',
     '',
     '# 3) 确认网关地址：打开 ~/.hermes/plugins/HarnessMate/adapter.py 第 62 行 WS_GATEWAY_WS_URL，应为平台自己的网关地址（形如 wss://<平台域名>:<端口>/ws）。',

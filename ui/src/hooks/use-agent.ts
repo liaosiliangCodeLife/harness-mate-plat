@@ -38,7 +38,7 @@ export const useGetAgentsWithPage = () => {
   const paginator = ref(buildDefaultPaginator())
 
   // 2.定义加载数据函数
-  const loadAgents = async (init: boolean = false, search_word: string = '') => {
+  const loadAgents = async (init: boolean = false, search_word: string = '', agent_type: string = '') => {
     // 2.1 判断是否是初始化，如果是的话则先初始化分页器
     if (init) {
       paginator.value = buildDefaultPaginator()
@@ -53,6 +53,7 @@ export const useGetAgentsWithPage = () => {
         current_page: paginator.value.current_page,
         page_size: paginator.value.page_size,
         search_word,
+        ...(agent_type ? { agent_type } : {}),
       })
       const data = resp.data
 

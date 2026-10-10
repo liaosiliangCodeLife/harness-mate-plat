@@ -1,0 +1,37 @@
+# HarnessMate 插件行 —— 把 DSH 接入 HarnessMate 平台（本机 Agent 的手机/浏览器入口）
+#
+# 平台项目：https://github.com/liaosiliangCodeLife/harness-mate-plat
+# 协议参照：hermes 的 plugin/adapter.py + hermes_channel_protocol.md v0.5.2
+# bundle 契约形状与 dsh-headless / dsh-acp-app 一致。
+
+- insert:
+    - id: harness-mate
+      name: 'harness-mate'
+      config:
+        # ── 网关连接（§3.1）──
+        # 形如 wss://<网关域名>:<端口>/ws
+        gatewayUrl: 'wss://ws-agent.alltman.com:1443/ws'
+
+        # 本智能体在网关上的身份 = ws_session_id
+        # 在平台「个人空间 → 创建智能体」时拿到（DSH 需要单独创建一个，别复用 Hermes 的）
+        botId: 'REPLACE_WITH_YOUR_BOT_ID'
+
+        # JWT HMAC 密钥，必须与网关 JWT_SECRET 一致，否则 401
+        # ⚠️ 建议改用环境变量，不要写在 ~/.dsh 下（可能被同步/备份）：
+        #     botKey: !!js process.env.DSH_BOT_KEY
+        botKey: 'REPLACE_WITH_YOUR_BOT_KEY'
+
+        # ── 业务身份（§2.2）──
+        accountId: 'dsh-account'
+
+        # ── 访问控制（§3.1）──
+        dmPolicy: 'open'          # open | allowlist | disabled
+        allowFrom: []             # allowlist 模式下允许的 Peer ws_session_id
+
+        # ── 行为 ──
+        approvalTimeoutMs: 300000   # 审批超时 → 按拒绝处理
+        typingThrottleMs: 8000      # 协议 §10：思考状态 8s 节流
+        flushIntervalMs: 700        # 流式分片间隔
+        flushChars: 1200            # 或累积到多少字符即发
+        maxReplyChars: 4000         # 协议 §10：单条回复 4000 字符上限
+        forwardReasoning: false     # 是否把推理过程也发出去

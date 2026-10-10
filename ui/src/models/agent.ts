@@ -8,6 +8,7 @@ export type Agent = {
   bot_id: string
   name: string
   avatar: string
+  agent_type: string
   agent_info: Record<string, any>
   status: number
   conversation_count: number
@@ -20,7 +21,10 @@ export type Agent = {
 }
 
 // 获取智能体分页列表请求
-export type GetAgentsWithPageRequest = BasePaginatorRequest & { search_word: string }
+export type GetAgentsWithPageRequest = BasePaginatorRequest & {
+  search_word: string
+  agent_type?: string
+}
 
 // 获取智能体分页列表响应
 export type GetAgentsWithPageResponse = BasePaginatorResponse<Agent>
@@ -35,6 +39,7 @@ export type CreateAgentRequest = {
   peer_id: string
   avatar?: string
   gateway_id?: string
+  agent_type?: string
 }
 
 // 更新智能体请求，仅包含本次发生变化的字段

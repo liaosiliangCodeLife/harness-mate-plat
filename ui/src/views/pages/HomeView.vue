@@ -12,14 +12,16 @@ hermes`
 const hermesDocsUrl =
   'https://hermes-agent.nousresearch.com/docs/getting-started/installation#without-hermes-desktop'
 const pluginInstallCommand =
-  'hermes plugins install liaosiliangCodeLife/harness-mate-plat/plugin --yes-deps --enable'
+  'hermes plugins install liaosiliangCodeLife/harness-mate-plat/plugin/hermes --yes-deps --enable'
 const pluginEnvCommand = `cat >> ~/.hermes/.env <<'EOF'
 HARNESS_MATE_BOT_ID=<bot_id>
 HARNESS_MATE_BOT_KEY=<bot_key>
+HARNESS_MATE_DM_POLICY=open
+HARNESS_MATE_ALLOW_ALL_DEVICES=1
 EOF`
 const pluginRestartCommand = 'hermes gateway restart'
 const pluginInstallDocUrl =
-  'https://github.com/liaosiliangCodeLife/harness-mate-plat/blob/main/plugin/INSTALL.md'
+  'https://github.com/liaosiliangCodeLife/harness-mate-plat/blob/main/plugin/hermes/INSTALL.md'
 
 const copiedKey = ref('')
 let copyResetTimer: ReturnType<typeof setTimeout> | null = null
@@ -146,7 +148,7 @@ onUnmounted(() => {
                 1) 先拿身份：平台 → 个人空间 → 智能体右侧「⋯」→「配对 Hermes」，复制弹窗里的 bot_id 与 bot_key。
               </p>
               <p class="mt-4 text-sm leading-6 text-gray-700">
-                2) 装插件（一条命令，插件在仓库 plugin/ 子目录）：
+                2) 装插件（一条命令，插件在仓库 plugin/hermes 子目录）：
               </p>
               <div class="mt-2 flex min-w-0 items-start rounded-md bg-gray-100">
                 <pre class="m-0 min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-5 text-gray-800">{{ pluginInstallCommand }}</pre>
@@ -192,7 +194,7 @@ onUnmounted(() => {
                 :href="pluginInstallDocUrl"
                 target="_blank"
                 rel="noopener noreferrer"
-              >安装说明见仓库 plugin/INSTALL.md →</a>
+              >安装说明见仓库 plugin/hermes/INSTALL.md →</a>
             </div>
           </div>
           <div class="mt-8">

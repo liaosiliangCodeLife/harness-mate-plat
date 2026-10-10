@@ -22,8 +22,10 @@ const generating = computed(
 const parts = computed(() =>
   splitMessageFiles(stripCursorGlyphs(props.message.content || ''), props.message.files),
 )
-const imageFiles = computed(() => parts.value.files.filter((file) => file.is_image))
-const otherFiles = computed(() => parts.value.files.filter((file) => !file.is_image))
+const imageFiles = computed(() => parts.value.files.filter((file) => file.media_kind === 'image'))
+const audioFiles = computed(() => parts.value.files.filter((file) => file.media_kind === 'audio'))
+const videoFiles = computed(() => parts.value.files.filter((file) => file.media_kind === 'video'))
+const otherFiles = computed(() => parts.value.files.filter((file) => file.media_kind === 'file'))
 const html = computed(() => renderMarkdown(parts.value.text))
 </script>
 
@@ -77,6 +79,27 @@ const html = computed(() => renderMarkdown(parts.value.text))
               </a-image>
             </div>
           </a-image-preview-group>
+          <div v-if="audioFiles.length" class="mb-2 flex max-w-full flex-col gap-2">
+            <audio
+              v-for="file in audioFiles"
+              :key="file.url"
+              class="chat-player"
+              controls
+              preload="metadata"
+              :src="file.url"
+            />
+          </div>
+          <div v-if="videoFiles.length" class="mb-2 flex max-w-full flex-col gap-2">
+            <video
+              v-for="file in videoFiles"
+              :key="file.url"
+              class="chat-player"
+              controls
+              playsinline
+              preload="metadata"
+              :src="file.url"
+            />
+          </div>
           <div v-if="otherFiles.length" class="mb-2 flex flex-col gap-2">
             <a
               v-for="file in otherFiles"
@@ -109,6 +132,18 @@ const html = computed(() => renderMarkdown(parts.value.text))
 .chat-image {
   max-width: min(100%, 240px);
   line-height: 0;
+}
+
+.chat-player {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  border-radius: 0.5rem;
+}
+
+video.chat-player {
+  max-height: 240px;
+  background-color: #111827;
 }
 
 .chat-image :deep(.arco-image-img) {

@@ -21,13 +21,17 @@ from urllib import request as urlrequest
 
 MAX_UPLOAD_BYTES = 16 * 1024 * 1024
 MAX_MEDIA_UPLOAD_BYTES = 1024 * 1024 * 1024
+MAX_ARCHIVE_UPLOAD_BYTES = 100 * 1024 * 1024
 IMAGE_EXTENSIONS = frozenset({"jpg", "jpeg", "png", "webp", "gif", "svg"})
 DOCUMENT_EXTENSIONS = frozenset(
     {"txt", "markdown", "md", "pdf", "html", "htm", "xlsx", "xls", "doc", "docx", "csv"}
 )
 AUDIO_EXTENSIONS = {"mp3", "wav", "m4a", "aac", "flac", "ogg", "oga", "opus", "amr", "wma", "aiff", "mka"}
 VIDEO_EXTENSIONS = {"mp4", "mov", "m4v", "avi", "mkv", "webm", "flv", "wmv", "mpeg", "mpg", "ts", "3gp"}
-ALLOWED_EXTENSIONS = IMAGE_EXTENSIONS | DOCUMENT_EXTENSIONS | AUDIO_EXTENSIONS | VIDEO_EXTENSIONS
+ARCHIVE_EXTENSIONS = {
+    "zip", "rar", "7z", "tar", "gz", "tgz", "bz2", "tbz", "tbz2", "xz", "txz", "zst", "zipx", "cab", "jar", "war",
+}
+ALLOWED_EXTENSIONS = IMAGE_EXTENSIONS | DOCUMENT_EXTENSIONS | AUDIO_EXTENSIONS | VIDEO_EXTENSIONS | ARCHIVE_EXTENSIONS
 OPEN_API_UPLOAD_PATH = "/api/open-api/upload-file"
 DEFAULT_OPEN_API_UPLOAD_URL = "https://harness.alltman.com" + OPEN_API_UPLOAD_PATH
 UPLOAD_TIMEOUT_SECONDS = 60.0
@@ -170,6 +174,9 @@ def prepare_upload_file(file_path: str) -> Tuple[str, str, int, str]:
     if kind in {"audio", "video"}:
         if size > MAX_MEDIA_UPLOAD_BYTES:
             raise OpenApiUploadError("音视频大小不能超过 1024 MB")
+    elif extension in ARCHIVE_EXTENSIONS:
+        if size > MAX_ARCHIVE_UPLOAD_BYTES:
+            raise OpenApiUploadError("压缩包最大不能超过100MB")
     elif size > MAX_UPLOAD_BYTES:
         raise OpenApiUploadError("文件大小不能超过 16 MB")
     return _safe_filename(path.name), str(path), size, mime_type_for_name(path.name)

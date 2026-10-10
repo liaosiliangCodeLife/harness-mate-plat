@@ -1,0 +1,18 @@
+{
+  "name": "harness-mate",
+  "version": "0.2.0",
+  "private": true,
+  "description": "把 DSH（DeepSeek Harness）接入 HarnessMate 平台 —— 本机 Agent 的手机/浏览器入口（消息、文件、问答全打通）。平台项目：https://github.com/liaosiliangCodeLife/harness-mate-plat",
+  "icon": "icon.svg",
+  "homepage": "https://github.com/liaosiliangCodeLife/harness-mate-plat",
+  "type": "module",
+  "main": "index.js",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-agent": "workspace:^"
+  }
+}

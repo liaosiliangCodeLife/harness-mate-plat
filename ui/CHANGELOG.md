@@ -2,6 +2,10 @@
 
 > 约定：每次提交前，先在本文件顶部新增一条 `## <版本号> — <YYYY-MM-DD HH:MM>`，列出这次提交里本模块的改动。版本号是平台级的（取本模块 `package.json` 的 `version`，页面上展示的 Version 与它同源），每次提交 +1；改动落在哪个模块，就写进哪个模块的记录。
 
+## 0.1.7 — 2026-10-09 08:28
+- 新增：聊天气泡支持音频、视频内联播放（`<audio>` / `<video>` 带 controls、playsinline），收到音视频不用再下载成文件卡片
+- 优化：文件类型判定统一为 media_kind（image / audio / video / file），按 reply 的 media_type、MIME 前缀与扩展名识别；is_image 与 media_kind 保持一致
+
 ## 0.1.6 — 2026-10-09 07:51
 - 新增：换上 HarnessMate 品牌图标（八爪鱼）——网站 favicon（favicon.ico / favicon.svg）、Apple Touch Icon、仓库 logo 全部替换，移除 Vue 默认的 favicon.webp
 - 新增：assets/ 增加矢量版 logo.svg（透明底，可随文字换色）与 icon.svg（圆角渐变底）

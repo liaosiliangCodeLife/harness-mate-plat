@@ -1448,6 +1448,6 @@ def register(ctx) -> None:
         standalone_sender_fn=_standalone_send,
         max_message_length=MAX_MESSAGE_LENGTH,
         install_hint="pip install websockets PyJWT",
-        emoji="🔗",
+        emoji="🧩",
         allow_update_command=True,
     )

@@ -50,6 +50,8 @@ class AgentService(BaseService):
                 .replace("_", "\\_")
             )
             statement = statement.where(Agent.name.ilike(f"%{escaped}%", escape="\\"))
+        if req.agent_type.data:
+            statement = statement.where(Agent.agent_type == req.agent_type.data.strip().upper())
         statement = statement.order_by(Agent.created_at.desc(), Agent.id.desc())
 
         paginator = Paginator(db=self.db, req=req)
@@ -83,6 +85,7 @@ class AgentService(BaseService):
             avatar: str,
             agent_info: dict,
             gateway_id: str | None,
+            agent_type: str = "HERMES",
     ) -> Agent:
         """在当前账号下创建智能体，bot_id 全局唯一（含已软删除记录）"""
         existed = self.db.session.query(Agent.id).filter(
@@ -103,6 +106,7 @@ class AgentService(BaseService):
                 bot_id=bot_id,
                 name=name,
                 avatar=avatar or "",
+                agent_type=(agent_type or "HERMES").upper(),
                 agent_info=agent_info if isinstance(agent_info, dict) else {},
                 gateway_id=resolved_gateway_id,
             )

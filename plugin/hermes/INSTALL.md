@@ -9,7 +9,7 @@
 ## 0. 极简版（三条命令，已实测）
 
 ```bash
-# 1) 安装（自动装依赖并启用；插件在仓库的 plugin/ 子目录里）
+# 1) 安装（自动装依赖并启用；插件在仓库的 plugin/hermes/ 子目录里）
 hermes plugins install liaosiliangCodeLife/harness-mate-plat/plugin/hermes --yes-deps --enable
 
 # 2) 填身份：把 <...> 换成平台侧给你的值
@@ -46,7 +46,7 @@ hermes gateway restart        # 重启后插件才会连上网关
 hermes plugins install liaosiliangCodeLife/harness-mate-plat/plugin/hermes --yes-deps --enable
 ```
 
-- 插件在仓库的 `plugin/` 子目录，Hermes 支持 `owner/repo/子目录` 写法（也接受 `https://github.com/owner/repo.git/plugin` 或 `owner/repo#plugin`）。
+- 插件在仓库的 `plugin/hermes/` 子目录，Hermes 支持 `owner/repo/子目录` 写法（也接受 `https://github.com/owner/repo.git/plugin/hermes` 或 `owner/repo#plugin/hermes`）。
 - `--yes-deps`：非交互地同意安装 Python 依赖。**不加它，安装会停在「依赖确认」这一步**（SSH/CI 场景尤其要加）。
 - `--enable`：装完直接启用；不加则事后 `hermes plugins enable HarnessMate`。
 - 落点：`~/.hermes/plugins/HarnessMate/`。
@@ -58,7 +58,7 @@ hermes plugins install liaosiliangCodeLife/harness-mate-plat/plugin/hermes --yes
 ```bash
 git clone https://github.com/liaosiliangCodeLife/harness-mate-plat.git
 mkdir -p ~/.hermes/plugins
-cp -R harness-mate-plat/plugin ~/.hermes/plugins/HarnessMate
+cp -R harness-mate-plat/plugin/hermes ~/.hermes/plugins/HarnessMate
 hermes plugins adopt ~/.hermes/plugins/HarnessMate    # 可选：纳入安装来源跟踪
 hermes plugins enable HarnessMate
 ```
@@ -158,7 +158,7 @@ hermes plugins show HarnessMate               # 期望 required env 不再是「
 **② 插件能被 Hermes 正常加载**（对目录跑同样可以，适合装前自检）
 
 ```bash
-hermes plugins doctor /path/to/harness-mate-plat/plugin
+hermes plugins doctor /path/to/harness-mate-plat/plugin/hermes
 # 期望输出：OK: runtime discovery, manifest parsing, import, and registration passed
 ```
 

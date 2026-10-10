@@ -80,6 +80,23 @@ class IsAgentIdType:
         raise ValidationError("标识类型只能是peer_id、bot_id、ws_session_id、thread_id")
 
 
+AGENT_TYPES = ("HERMES", "DEEPSEEK_HARNESS", "OTHER")
+
+
+class IsAgentType:
+    """校验智能体类型只能是 HERMES、DEEPSEEK_HARNESS、OTHER"""
+
+    def __call__(self, form, field):
+        """空值交给 Optional；已填写的值转大写后必须在允许列表里"""
+        if not field.raw_data:
+            return
+        value = field.data
+        if value is None or (isinstance(value, str) and not value.strip()):
+            return
+        if not isinstance(value, str) or value.strip().upper() not in AGENT_TYPES:
+            raise ValidationError("智能体类型只能是HERMES、DEEPSEEK_HARNESS、OTHER")
+
+
 class SkipIfMissing:
     """请求未携带该字段时跳过后续校验，用于增量更新"""
 
@@ -134,6 +151,7 @@ class GetAgentResp(Schema):
     bot_id = fields.String(dump_default="")
     name = fields.String(dump_default="")
     avatar = fields.String(dump_default="")
+    agent_type = fields.String(dump_default="HERMES")
     agent_info = fields.Dict(dump_default=dict)
     status = fields.Integer(dump_default=0)
     conversation_count = fields.Integer(dump_default=0)
@@ -170,6 +188,7 @@ class GetAgentResp(Schema):
             "bot_id": data.bot_id,
             "name": data.name,
             "avatar": data.avatar,
+            "agent_type": data.agent_type or "HERMES",
             "agent_info": data.agent_info if data.agent_info is not None else {},
             "status": 1 if is_online(data.id) else 0,
             "conversation_count": data.conversation_count,
@@ -211,6 +230,12 @@ class GetAgentsWithPageReq(PaginatorReq):
         Optional(),
         Length(max=255, message="搜索词长度不能超过255个字符"),
     ])
+    agent_type = StrictStringField("agent_type", validators=[
+        Optional(),
+        IsString("智能体类型必须是字符串"),
+        Length(max=255, message="智能体类型长度不能超过255个字符"),
+        IsAgentType(),
+    ])
     page_size = IntegerField("page_size", default=20, validators=[
         Optional(),
         NumberRange(min=10, max=50, message="每页数据的条数范围在10-50"),
@@ -240,6 +265,12 @@ class CreateAgentReq(FlaskForm):
         IsString("智能体头像必须是字符串"),
         Length(max=255, message="智能体头像长度不能超过255个字符"),
         URL(message="智能体头像必须是URL地址"),
+    ])
+    agent_type = StrictStringField("agent_type", validators=[
+        Optional(),
+        IsString("智能体类型必须是字符串"),
+        Length(max=255, message="智能体类型长度不能超过255个字符"),
+        IsAgentType(),
     ])
     agent_info = DictField("agent_info", validators=[
         Optional(),

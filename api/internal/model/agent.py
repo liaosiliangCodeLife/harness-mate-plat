@@ -44,6 +44,7 @@ class Agent(db.Model):
     bot_id = Column(String(255), nullable=False)  # 智能体业务标识，全局唯一（uk_agent_bot_id），由对端上报
     name = Column(String(255), nullable=False)  # 智能体名称，用于列表和详情展示
     avatar = Column(String(255), nullable=False)  # 头像地址，前端展示智能体头像时使用
+    agent_type = Column(String(255), nullable=False, server_default=text("'HERMES'::character varying"))  # 智能体接入类型：HERMES=Hermes Agent 插件接入，DEEPSEEK_HARNESS=DeepSeek harness 接入，OTHER=其它；默认 HERMES
     agent_info = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))  # 智能体详细信息，JSON 扩展配置，默认空对象 {}
     status = Column(SmallInteger, nullable=False, server_default=text("0"))  # 在线状态：0=离线 1=在线，网关连接或心跳时更新
     conversation_count = Column(Integer, nullable=False, server_default=text("0"))  # 该智能体的会话数量，会话增减时维护的冗余计数
