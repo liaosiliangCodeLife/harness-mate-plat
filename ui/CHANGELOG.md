@@ -2,6 +2,11 @@
 
 > 约定：每次提交前，先在本文件顶部新增一条 `## <版本号> — <YYYY-MM-DD HH:MM>`，列出这次提交里本模块的改动。版本号是平台级的（取本模块 `package.json` 的 `version`，页面上展示的 Version 与它同源），每次提交 +1；改动落在哪个模块，就写进哪个模块的记录。
 
+## 0.1.8 — 2026-10-10 08:35
+- 新增：个人空间按智能体接入类型分栏（Hermes智能体 / DeepSeekHarness智能体）—— 创建时自动带上当前分栏的类型、列表按类型过滤、卡片名称下显示类型
+- 新增：对话上传支持主流压缩包（zip/rar/7z/tar.gz 等，上限 100MB）
+- 优化：插件安装指引与文档链接改到 plugin/hermes
+
 ## 0.1.7 — 2026-10-09 08:28
 - 新增：聊天气泡支持音频、视频内联播放（`<audio>` / `<video>` 带 controls、playsinline），收到音视频不用再下载成文件卡片
 - 优化：文件类型判定统一为 media_kind（image / audio / video / file），按 reply 的 media_type、MIME 前缀与扩展名识别；is_image 与 media_kind 保持一致
