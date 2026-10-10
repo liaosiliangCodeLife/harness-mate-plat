@@ -294,7 +294,7 @@ onUnmounted(() => {
             <div class="mb-3 text-lg font-medium text-gray-900">Step Two: 安装 Plugin（DeepSeek Harness）</div>
             <div class="min-w-0 rounded-lg border border-gray-300 bg-white p-4">
               <p class="text-sm leading-6 text-gray-700">
-                1) 先拿身份：平台 → 个人空间 → 智能体右侧「⋯」→「配对 Hermes」，复制弹窗里的 bot_id 与 bot_key。
+                1) 先拿身份：平台 → 个人空间 → 智能体右侧「⋯」→「配对 DeepSeek Harness」，复制弹窗里的 bot_id 与 bot_key。
               </p>
               <p class="mt-4 text-sm leading-6 text-gray-700">
                 2) 取插件包（GitHub 仓库 plugin/dsh 目录）：
@@ -334,7 +334,7 @@ onUnmounted(() => {
                 </button>
               </div>
               <p class="mt-4 text-sm leading-6 text-gray-700">
-                4) 运行安装脚本（会提示输入 bot_id / bot_key；也可一步传入）。示例里的 &lt;bot_id&gt;、&lt;bot_key&gt; 请换成「配对 Hermes」弹窗里复制的值。
+                4) 运行安装脚本（会提示输入 bot_id / bot_key；也可一步传入）。示例里的 &lt;bot_id&gt;、&lt;bot_key&gt; 请换成「配对 DeepSeek Harness」弹窗里复制的值。
               </p>
               <div class="mb-2 mt-4 text-sm font-medium text-gray-900">macOS</div>
               <div class="flex min-w-0 items-start rounded-md bg-gray-100">

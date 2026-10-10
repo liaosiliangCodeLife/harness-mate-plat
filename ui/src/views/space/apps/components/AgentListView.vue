@@ -166,7 +166,10 @@ watch(
               <icon-robot v-else />
             </a-avatar>
             <div class="flex flex-1 min-w-0 items-center justify-between gap-2">
-              <div class="text-base text-gray-900 font-bold truncate">{{ agent.name }}</div>
+              <div class="flex min-w-0 items-center gap-1">
+                <span class="text-base text-gray-900 font-bold truncate">{{ agent.name }}</span>
+                <span class="flex-shrink-0 text-sm font-semibold text-[#165DFF]">@{{ agent.agent_type }}</span>
+              </div>
               <a-tag v-if="agent.status === 1" color="green" size="small" class="flex-shrink-0">
                 在线
               </a-tag>
@@ -174,7 +177,6 @@ watch(
             </div>
           </div>
           <div class="flex flex-col gap-1 text-xs text-gray-500">
-            <div class="truncate">{{ agent.agent_type }}</div>
             <template v-if="agentInfoRows(agent).length">
               <div
                 v-for="item in agentInfoRows(agent)"
@@ -196,7 +198,9 @@ watch(
                 ...
               </a-button>
               <template #content>
-                <a-doption @click.stop="openPairHermes(agent)">配对 Hermes</a-doption>
+                <a-doption @click.stop="openPairHermes(agent)">{{
+                  agent.agent_type === 'DEEPSEEK_HARNESS' ? '配对 DeepSeek Harness' : '配对 Hermes'
+                }}</a-doption>
                 <a-doption @click.stop="openEdit(agent)">编辑</a-doption>
                 <a-doption class="!text-red-700" @click.stop="confirmRemoveAgent(agent)">
                   删除

@@ -22,11 +22,27 @@ const rows = computed(() => [
  * @Param: 无。凭据取自 props.agent：bot_id 用 agent.bot_id，bot_key 用 agent.gateway_key
  * @return：多行安装指令；任一凭据为空时返回空字符串
  */
+const isDeepSeekHarness = computed(() => props.agent?.agent_type === 'DEEPSEEK_HARNESS')
 const installCommand = computed(() => {
   const botId = props.agent?.bot_id?.trim() ?? ''
   const botKey = props.agent?.gateway_key?.trim() ?? ''
   if (!botId || !botKey) {
     return ''
+  }
+  if (isDeepSeekHarness.value) {
+    return [
+      '# 1) 取插件包（插件在仓库 plugin/dsh 子目录）：',
+      'git clone --depth 1 https://github.com/liaosiliangCodeLife/harness-mate-plat.git',
+      'mkdir -p ~/Documents && mv harness-mate-plat/plugin/dsh ~/Documents/harness-mate',
+      '',
+      '# 2) 安装（身份已填入，脚本会写配置并接好插件链接）：',
+      `cd ~/Documents/harness-mate && chmod +x install.sh && ./install.sh ${botId} ${botKey}`,
+      '',
+      '# 3) 如需确认网关地址：~/.dsh/profiles/desktop/cordis.patch.yml 里的 gatewayUrl 应为平台自己的网关地址（形如 wss://<平台域名>:<端口>/ws）。',
+      '',
+      '# 4) 完全退出 DeepSeek Harness 再重新打开（不是只关窗口）；回平台进智能体发一条消息能收到回复即端到端打通。',
+      '',
+    ].join('\n')
   }
   return [
     '# 1) 装插件（一条命令，插件在仓库 plugin/hermes 子目录）：',
@@ -98,7 +114,7 @@ const copyInstallCommand = async () => {
     <div class="mb-6 flex items-start justify-between gap-3">
       <div>
         <div class="pair-hermes-title">
-          配对 <span class="pair-hermes-accent">Hermes</span>
+          配对 <span class="pair-hermes-accent">{{ isDeepSeekHarness ? 'DeepSeek Harness' : 'Hermes' }}</span>
         </div>
         <p class="pair-hermes-subtitle">点下方按钮复制安装指令，粘贴到本机终端执行即可完成配对</p>
       </div>
