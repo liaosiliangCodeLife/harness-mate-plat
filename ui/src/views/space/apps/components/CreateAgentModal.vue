@@ -48,6 +48,19 @@ const gatewayUrl = computed(() => {
   return server.value?.gateway_url || ''
 })
 const gatewayLoading = computed(() => (isEdit.value ? false : getServerLoading.value))
+const agentTypeLabel = computed(() => {
+  const value = props.agent?.agent_type?.trim() ?? ''
+  if (!value) {
+    return '-'
+  }
+  if (value === 'HERMES') {
+    return 'Hermes智能体'
+  }
+  if (value === 'DEEPSEEK_HARNESS') {
+    return 'DeepSeekHarness智能体'
+  }
+  return value
+})
 
 // 2.定义隐藏模态窗函数
 const hideModal = () => {
@@ -314,6 +327,13 @@ watch(
           :rules="[{ required: true, message: '请输入智能体名称' }]"
         >
           <a-input v-model="form.name" placeholder="请输入智能体名称" />
+        </a-form-item>
+        <a-form-item v-if="isEdit" label="智能体接入类型">
+          <div class="flex w-full min-w-0 items-center gap-1 min-h-[32px]">
+            <div class="break-all text-gray-700" :title="agentTypeLabel">
+              {{ agentTypeLabel }}
+            </div>
+          </div>
         </a-form-item>
         <a-form-item v-if="isEdit" field="agent_info" label="agent_info">
           <a-textarea
