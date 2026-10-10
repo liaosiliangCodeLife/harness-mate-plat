@@ -22,6 +22,24 @@ EOF`
 const pluginRestartCommand = 'hermes gateway restart'
 const pluginInstallDocUrl =
   'https://github.com/liaosiliangCodeLife/harness-mate-plat/blob/main/plugin/hermes/INSTALL.md'
+const dshSiteUrl = 'https://www.deepseek.com/harness'
+const dshGithubUrl = 'https://github.com/deepseek-ai/deepseek-harness'
+const dshInstallCommand = 'npm install -g @deepseek-ai/dsh'
+const dshNpxCommand = 'npx @deepseek-ai/dsh web'
+const dshWebCommand = 'dsh web'
+const dshPluginCloneCommand =
+  'git clone --depth 1 https://github.com/liaosiliangCodeLife/harness-mate-plat.git'
+const dshPluginMoveCommandMac =
+  'mkdir -p ~/Documents && mv harness-mate-plat/plugin/dsh ~/Documents/harness-mate'
+const dshPluginMoveCommandWin =
+  'move harness-mate-plat\\plugin\\dsh %USERPROFILE%\\Documents\\harness-mate'
+const dshPluginInstallCommandMac =
+  'cd ~/Documents/harness-mate && chmod +x install.sh && ./install.sh'
+const dshPluginInstallOnceCommandMac = './install.sh <bot_id> <bot_key>'
+const dshPluginInstallCommandWin = 'powershell -ExecutionPolicy Bypass -File .\\install.ps1'
+const dshPluginInstallOnceCommandWin = '.\\install.ps1 -BotId <bot_id> -BotKey <bot_key>'
+const dshPluginDocUrl =
+  'https://github.com/liaosiliangCodeLife/harness-mate-plat/blob/main/plugin/dsh/INSTALL.md'
 
 const copiedKey = ref('')
 let copyResetTimer: ReturnType<typeof setTimeout> | null = null
@@ -75,6 +93,8 @@ onUnmounted(() => {
           <div class="text-base text-gray-700">
             从智能体创建、会话接入到运行打通，Harness Mate 把端到端的一整套能力放在一个平台里：创建并管理智能体，接入自己的设备与会话，通过统一网关让消息与文件在平台与智能体之间点对点流转，再用开放接口把 AI 能力接进你现有的业务系统。
           </div>
+          <a-tabs class="mt-8" default-active-key="hermes">
+            <a-tab-pane key="hermes" title="Hermes 教程">
           <div class="mt-8 min-w-0">
             <div class="mb-3 text-lg font-medium text-gray-900">Step One: 安装 Hermes</div>
             <div class="min-w-0 rounded-lg border border-gray-300 bg-white p-4">
@@ -197,6 +217,182 @@ onUnmounted(() => {
               >安装说明见仓库 plugin/hermes/INSTALL.md →</a>
             </div>
           </div>
+            </a-tab-pane>
+            <a-tab-pane key="deepseek" title="DeepSeek Harness 教程">
+          <div class="mt-8 min-w-0">
+            <div class="mb-3 text-lg font-medium text-gray-900">Step One: 安装 DeepSeek Harness</div>
+            <div class="min-w-0 rounded-lg border border-gray-300 bg-white p-4">
+              <p class="text-sm leading-6 text-gray-700">
+                Harness Mate 上的 DeepSeekHarness 智能体需要在你自己的机器上运行 DeepSeek Harness（dsh）桌面版 / Web 版；先装好 Node.js（18+），再用一条命令安装。
+              </p>
+              <p class="mt-2 text-xs text-gray-500">
+                <a
+                  class="text-blue-600 hover:underline"
+                  :href="dshSiteUrl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >官网：{{ dshSiteUrl }}</a>
+                ·
+                <a
+                  class="text-blue-600 hover:underline"
+                  :href="dshGithubUrl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >GitHub：{{ dshGithubUrl }}</a>
+              </p>
+              <p class="mt-4 text-sm leading-6 text-gray-700">
+                1) 安装（macOS / Linux / Windows 通用，需 Node.js 18+）：
+              </p>
+              <div class="mt-2 flex min-w-0 items-start rounded-md bg-gray-100">
+                <pre class="m-0 min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-5 text-gray-800">{{ dshInstallCommand }}</pre>
+                <button
+                  type="button"
+                  class="m-2 shrink-0 rounded border border-gray-300 bg-white px-2 py-0.5 text-xs text-gray-600 hover:text-gray-900"
+                  @click="copyCommand('dsh-install', dshInstallCommand)"
+                >
+                  {{ copiedKey === 'dsh-install' ? '已复制' : '复制' }}
+                </button>
+              </div>
+              <p class="mt-4 text-sm leading-6 text-gray-700">
+                2) 免安装直接跑（不想全局装时）：
+              </p>
+              <div class="mt-2 flex min-w-0 items-start rounded-md bg-gray-100">
+                <pre class="m-0 min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-5 text-gray-800">{{ dshNpxCommand }}</pre>
+                <button
+                  type="button"
+                  class="m-2 shrink-0 rounded border border-gray-300 bg-white px-2 py-0.5 text-xs text-gray-600 hover:text-gray-900"
+                  @click="copyCommand('dsh-npx', dshNpxCommand)"
+                >
+                  {{ copiedKey === 'dsh-npx' ? '已复制' : '复制' }}
+                </button>
+              </div>
+              <p class="mt-4 text-sm leading-6 text-gray-700">
+                3) 启动 Web 界面（默认 http://127.0.0.1:3080）：
+              </p>
+              <div class="mt-2 flex min-w-0 items-start rounded-md bg-gray-100">
+                <pre class="m-0 min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-5 text-gray-800">{{ dshWebCommand }}</pre>
+                <button
+                  type="button"
+                  class="m-2 shrink-0 rounded border border-gray-300 bg-white px-2 py-0.5 text-xs text-gray-600 hover:text-gray-900"
+                  @click="copyCommand('dsh-web', dshWebCommand)"
+                >
+                  {{ copiedKey === 'dsh-web' ? '已复制' : '复制' }}
+                </button>
+              </div>
+              <p class="mt-4 text-sm leading-6 text-gray-700">
+                桌面版也可从官网下载安装（安装后至少启动一次，插件才装得进去）。
+              </p>
+              <a
+                class="mt-4 inline-block text-xs text-gray-500 hover:text-gray-700"
+                :href="dshGithubUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+              >文档见 DeepSeek Harness GitHub →</a>
+            </div>
+          </div>
+          <div class="mt-8 min-w-0">
+            <div class="mb-3 text-lg font-medium text-gray-900">Step Two: 安装 Plugin（DeepSeek Harness）</div>
+            <div class="min-w-0 rounded-lg border border-gray-300 bg-white p-4">
+              <p class="text-sm leading-6 text-gray-700">
+                1) 先拿身份：平台 → 个人空间 → 智能体右侧「⋯」→「配对 Hermes」，复制弹窗里的 bot_id 与 bot_key。
+              </p>
+              <p class="mt-4 text-sm leading-6 text-gray-700">
+                2) 取插件包（GitHub 仓库 plugin/dsh 目录）：
+              </p>
+              <div class="mt-2 flex min-w-0 items-start rounded-md bg-gray-100">
+                <pre class="m-0 min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-5 text-gray-800">{{ dshPluginCloneCommand }}</pre>
+                <button
+                  type="button"
+                  class="m-2 shrink-0 rounded border border-gray-300 bg-white px-2 py-0.5 text-xs text-gray-600 hover:text-gray-900"
+                  @click="copyCommand('dsh-clone', dshPluginCloneCommand)"
+                >
+                  {{ copiedKey === 'dsh-clone' ? '已复制' : '复制' }}
+                </button>
+              </div>
+              <p class="mt-4 text-sm leading-6 text-gray-700">
+                3) 把插件目录放到固定位置（macOS）：
+              </p>
+              <div class="mt-2 flex min-w-0 items-start rounded-md bg-gray-100">
+                <pre class="m-0 min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-5 text-gray-800">{{ dshPluginMoveCommandMac }}</pre>
+                <button
+                  type="button"
+                  class="m-2 shrink-0 rounded border border-gray-300 bg-white px-2 py-0.5 text-xs text-gray-600 hover:text-gray-900"
+                  @click="copyCommand('dsh-move-mac', dshPluginMoveCommandMac)"
+                >
+                  {{ copiedKey === 'dsh-move-mac' ? '已复制' : '复制' }}
+                </button>
+              </div>
+              <div class="mb-2 mt-4 text-sm font-medium text-gray-900">Windows</div>
+              <div class="flex min-w-0 items-start rounded-md bg-gray-100">
+                <pre class="m-0 min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-5 text-gray-800">{{ dshPluginMoveCommandWin }}</pre>
+                <button
+                  type="button"
+                  class="m-2 shrink-0 rounded border border-gray-300 bg-white px-2 py-0.5 text-xs text-gray-600 hover:text-gray-900"
+                  @click="copyCommand('dsh-move-win', dshPluginMoveCommandWin)"
+                >
+                  {{ copiedKey === 'dsh-move-win' ? '已复制' : '复制' }}
+                </button>
+              </div>
+              <p class="mt-4 text-sm leading-6 text-gray-700">
+                4) 运行安装脚本（会提示输入 bot_id / bot_key；也可一步传入）。示例里的 &lt;bot_id&gt;、&lt;bot_key&gt; 请换成「配对 Hermes」弹窗里复制的值。
+              </p>
+              <div class="mb-2 mt-4 text-sm font-medium text-gray-900">macOS</div>
+              <div class="flex min-w-0 items-start rounded-md bg-gray-100">
+                <pre class="m-0 min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-5 text-gray-800">{{ dshPluginInstallCommandMac }}</pre>
+                <button
+                  type="button"
+                  class="m-2 shrink-0 rounded border border-gray-300 bg-white px-2 py-0.5 text-xs text-gray-600 hover:text-gray-900"
+                  @click="copyCommand('dsh-install-mac', dshPluginInstallCommandMac)"
+                >
+                  {{ copiedKey === 'dsh-install-mac' ? '已复制' : '复制' }}
+                </button>
+              </div>
+              <p class="mt-4 text-sm leading-6 text-gray-700">一步传入版本：</p>
+              <div class="mt-2 flex min-w-0 items-start rounded-md bg-gray-100">
+                <pre class="m-0 min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-5 text-gray-800">{{ dshPluginInstallOnceCommandMac }}</pre>
+                <button
+                  type="button"
+                  class="m-2 shrink-0 rounded border border-gray-300 bg-white px-2 py-0.5 text-xs text-gray-600 hover:text-gray-900"
+                  @click="copyCommand('dsh-install-mac-once', dshPluginInstallOnceCommandMac)"
+                >
+                  {{ copiedKey === 'dsh-install-mac-once' ? '已复制' : '复制' }}
+                </button>
+              </div>
+              <div class="mb-2 mt-4 text-sm font-medium text-gray-900">Windows</div>
+              <div class="flex min-w-0 items-start rounded-md bg-gray-100">
+                <pre class="m-0 min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-5 text-gray-800">{{ dshPluginInstallCommandWin }}</pre>
+                <button
+                  type="button"
+                  class="m-2 shrink-0 rounded border border-gray-300 bg-white px-2 py-0.5 text-xs text-gray-600 hover:text-gray-900"
+                  @click="copyCommand('dsh-install-win', dshPluginInstallCommandWin)"
+                >
+                  {{ copiedKey === 'dsh-install-win' ? '已复制' : '复制' }}
+                </button>
+              </div>
+              <p class="mt-4 text-sm leading-6 text-gray-700">一步传入版本：</p>
+              <div class="mt-2 flex min-w-0 items-start rounded-md bg-gray-100">
+                <pre class="m-0 min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-5 text-gray-800">{{ dshPluginInstallOnceCommandWin }}</pre>
+                <button
+                  type="button"
+                  class="m-2 shrink-0 rounded border border-gray-300 bg-white px-2 py-0.5 text-xs text-gray-600 hover:text-gray-900"
+                  @click="copyCommand('dsh-install-win-once', dshPluginInstallOnceCommandWin)"
+                >
+                  {{ copiedKey === 'dsh-install-win-once' ? '已复制' : '复制' }}
+                </button>
+              </div>
+              <p class="mt-4 text-sm leading-6 text-gray-700">
+                5) 完全退出 DeepSeek Harness（macOS 菜单栏退出 / Windows 托盘退出，不是只关窗口）再重新打开；在平台上给这个智能体发一条消息，能收到回复即安装成功。
+              </p>
+              <a
+                class="mt-4 inline-block text-xs text-gray-500 hover:text-gray-700"
+                :href="dshPluginDocUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+              >安装说明见仓库 plugin/dsh/INSTALL.md →</a>
+            </div>
+          </div>
+            </a-tab-pane>
+          </a-tabs>
           <div class="mt-8">
             <div class="mb-3 text-lg font-medium text-gray-900">使用教程</div>
             <div
