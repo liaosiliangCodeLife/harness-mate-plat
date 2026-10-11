@@ -16,10 +16,6 @@
 - 📘 **English**：[README.en.md](README.en.md)
 
 <p align="center">
-  <video src="https://github.com/liaosiliangCodeLife/harness-mate-plat/raw/main/assets/harnessmate-tutorial-720p.mp4" controls width="880" poster="assets/video-cover.png"></video>
-</p>
-
-<p align="center">
   <a href="assets/harnessmate-tutorial-720p.mp4" title="播放 5 分 45 秒完整教程视频">
     <img src="assets/video-cover.png" width="880" alt="Harness Mate 视频教程（5 分 45 秒）：登录平台 → 创建智能体 → 配对 Hermes → 安装插件 → 与本地智能体对话" />
   </a>
