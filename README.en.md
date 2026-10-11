@@ -16,18 +16,6 @@ It ships with a [Hermes Agent](https://hermes-agent.nousresearch.com/) adapter b
 - 📘 **中文文档**: [README.md](README.md)
 
 <p align="center">
-  <video src="https://github.com/user-attachments/assets/37a72b18-1e67-4e1d-bc62-2ab1cda46a90" controls width="880" poster="assets/video-cover.png"></video>
-</p>
-
-<p align="center">
-  <a href="https://github.com/user-attachments/assets/37a72b18-1e67-4e1d-bc62-2ab1cda46a90" title="Play the full 5:45 walkthrough">
-    <img src="assets/video-cover.png" width="880" alt="Harness Mate video walkthrough (5:45): sign in → create an agent → pair Hermes → install the plugin → chat with your local agent" />
-  </a>
-  <br/>
-  ▶️ <b>Full 5:45 video walkthrough</b> (click the image to play)
-</p>
-
-<p align="center">
   <img src="assets/demo.gif" alt="Harness Mate demo: home → workspace → chat with your local agent" width="880" />
 </p>
 
