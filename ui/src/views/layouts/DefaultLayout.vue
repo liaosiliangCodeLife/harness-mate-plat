@@ -16,6 +16,7 @@ const accountStore = useAccountStore()
 const { handleLogout: handleLogoutHook } = useLogout()
 const { current_user, loadCurrentUser } = useGetCurrentUser()
 const avatarLoadFailed = ref(false)
+const githubStars = ref<number | null>(null)
 const accountAvatar = computed(() => {
   if (avatarLoadFailed.value) {
     return ''
@@ -48,6 +49,33 @@ onMounted(async () => {
   await loadCurrentUser()
   accountStore.update(current_user.value)
 })
+
+// 4.页面挂载时获取 GitHub 仓库 star 数，失败时不展示
+onMounted(async () => {
+  const controller = new AbortController()
+  const timer = window.setTimeout(() => controller.abort(), 5000)
+  try {
+    const response = await fetch(
+      'https://api.github.com/repos/liaosiliangCodeLife/harness-mate-plat',
+      { signal: controller.signal },
+    )
+    if (!response.ok) {
+      return
+    }
+    const data: unknown = await response.json()
+    const count =
+      data !== null && typeof data === 'object' && 'stargazers_count' in data
+        ? (data as { stargazers_count?: unknown }).stargazers_count
+        : undefined
+    if (typeof count === 'number' && Number.isFinite(count)) {
+      githubStars.value = count
+    }
+  } catch {
+    // 请求失败、超时或响应异常时保持原「GitHub」文案
+  } finally {
+    window.clearTimeout(timer)
+  }
+})
 </script>
 
 <template>
@@ -63,10 +91,10 @@ onMounted(async () => {
             target="_blank"
             rel="noopener noreferrer"
             title="GitHub 仓库"
-            class="mb-5 flex h-9 w-[110px] items-center justify-center gap-2 rounded-lg bg-gray-200 text-sm text-gray-600 transition-all hover:bg-gray-300 hover:text-gray-800"
+            class="mb-5 flex h-9 w-[128px] items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-gray-200 text-sm text-gray-600 transition-all hover:bg-gray-300 hover:text-gray-800"
           >
             <icon-github :size="16" />
-            GitHub
+            GitHub<template v-if="githubStars !== null"> ★ {{ githubStars }}</template>
           </a>
           <!-- 侧边栏导航 -->
           <layout-sidebar />
