@@ -81,11 +81,11 @@ const visible = ref(false)
         </template>
         <div
           v-if="['agent_thought', 'agent_message'].includes(agent_thought.event)"
-          class="text-xs text-gray-500 line-clamp-4 break-all"
+          class="text-[10px] text-gray-500 line-clamp-4 break-all"
         >
           {{ agent_thought.thought || '-' }}
         </div>
-        <div v-else class="text-xs text-gray-500 line-clamp-4 break-all">
+        <div v-else class="text-[10px] text-gray-500 line-clamp-4 break-all">
           {{ agent_thought.observation || '-' }}
         </div>
       </a-collapse-item>

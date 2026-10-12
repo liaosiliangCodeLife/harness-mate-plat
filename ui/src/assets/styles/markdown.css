@@ -4,7 +4,7 @@
   margin: 0;
   color: inherit;
   background-color: transparent;
-  font-size: 14px !important;
+  font-size: 11px !important;
   font-weight: 400;
   line-height: 1.5;
   word-wrap: break-word;
@@ -349,7 +349,7 @@
     Consolas,
     Liberation Mono,
     monospace;
-  font-size: 12px;
+  font-size: 10px;
 }
 
 .markdown-body pre {
@@ -735,7 +735,7 @@
 .markdown-body .csv-data th {
   padding: 5px;
   overflow: hidden;
-  font-size: 12px;
+  font-size: 10px;
   line-height: 1;
   text-align: left;
   white-space: nowrap;
@@ -767,7 +767,7 @@
 }
 
 .markdown-body .footnotes {
-  font-size: 12px;
+  font-size: 10px;
   color: var(--color-fg-muted);
   border-top: 1px solid var(--color-border-default);
 }

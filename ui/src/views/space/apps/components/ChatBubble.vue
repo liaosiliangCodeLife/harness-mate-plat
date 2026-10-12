@@ -44,7 +44,7 @@ const html = computed(() => renderMarkdown(parts.value.text))
       <icon-robot v-else />
     </a-avatar>
     <div class="flex-1 min-w-0 flex flex-col items-start gap-2">
-      <div class="text-gray-700 font-bold">{{ name }}</div>
+      <div class="text-[11px] text-gray-700 font-bold">{{ name }}</div>
       <div
         :class="`w-fit max-w-full min-w-0 break-words px-3 py-2 rounded-2xl border ${
           isUser
@@ -54,7 +54,7 @@ const html = computed(() => renderMarkdown(parts.value.text))
       >
         <div
           v-if="(message.thinking || generating) && !message.content && !parts.files.length"
-          class="text-gray-500"
+          class="text-[10px] text-gray-500"
         >
           {{ t('common.thinking') }}<span class="thinking-dots"><i>.</i><i>.</i><i>.</i></span>
         </div>
@@ -71,7 +71,7 @@ const html = computed(() => renderMarkdown(parts.value.text))
               >
                 <template #error>
                   <a
-                    class="flex max-w-[240px] items-center px-2 py-1.5 text-xs text-blue-600"
+                    class="flex max-w-[240px] items-center px-2 py-1.5 text-[10px] text-blue-600"
                     :href="file.url"
                     target="_blank"
                     rel="noopener noreferrer"
@@ -111,8 +111,8 @@ const html = computed(() => renderMarkdown(parts.value.text))
               rel="noopener noreferrer"
             >
               <icon-file class="flex-shrink-0 text-gray-500" :size="16" />
-              <span class="min-w-0 flex-1 truncate text-sm">{{ file.name }}</span>
-              <span v-if="formatFileSize(file.size)" class="flex-shrink-0 text-xs text-gray-400">
+              <span class="min-w-0 flex-1 truncate text-[10px]">{{ file.name }}</span>
+              <span v-if="formatFileSize(file.size)" class="flex-shrink-0 text-[10px] text-gray-400">
                 {{ formatFileSize(file.size) }}
               </span>
             </a>
@@ -122,7 +122,7 @@ const html = computed(() => renderMarkdown(parts.value.text))
             class="markdown-body chat-markdown break-all"
             v-html="html"
           ></div>
-          <div v-if="generating" class="mt-1 text-xs text-gray-500">{{ t('common.generating') }}</div>
+          <div v-if="generating" class="mt-1 text-[10px] text-gray-500">{{ t('common.generating') }}</div>
         </template>
       </div>
     </div>
@@ -158,7 +158,7 @@ video.chat-player {
 
 .chat-markdown {
   background-color: transparent;
-  font-size: 14px;
+  font-size: 11px;
   line-height: 1.35;
   color: inherit;
   max-width: 100%;

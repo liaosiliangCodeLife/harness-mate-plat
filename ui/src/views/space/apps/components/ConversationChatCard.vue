@@ -1110,7 +1110,7 @@ onUnmounted(() => {
           </a-tag>
           <a-tag v-else color="gray" size="small" class="flex-shrink-0">{{ t('common.offline') }}</a-tag>
         </div>
-        <div class="flex items-center gap-3 text-xs text-gray-400 mt-2">
+        <div class="flex items-center gap-3 text-[10px] text-gray-400 mt-2">
           <span class="flex-shrink-0">{{ t('conversation.messageCount', { count: conversation.message_count }) }}</span>
           <span class="flex-shrink-0">Token {{ conversation.total_token_count }}</span>
           <span class="truncate">{{ formattedTime }}</span>
@@ -1148,7 +1148,7 @@ onUnmounted(() => {
     </div>
     <div
       v-if="!gatewayReady"
-      class="mb-3 rounded-lg bg-orange-50 text-orange-700 text-xs px-3 py-2"
+      class="mb-3 rounded-lg bg-orange-50 text-orange-700 text-[10px] px-3 py-2"
     >
       {{ t('conversation.gatewayKeyMissing') }}
     </div>
@@ -1162,7 +1162,7 @@ onUnmounted(() => {
       </div>
       <div
         v-if="loadingEarlier"
-        class="pointer-events-none absolute inset-x-0 top-1 z-10 text-center text-xs text-gray-400"
+        class="pointer-events-none absolute inset-x-0 top-1 z-10 text-center text-[10px] text-gray-400"
       >
         {{ t('common.loading') }}
       </div>
@@ -1172,7 +1172,7 @@ onUnmounted(() => {
         @scroll="onListScroll"
       >
         <div ref="listTrackRef" class="flex flex-col gap-3">
-          <div v-if="historyError" class="text-center text-xs text-gray-500">
+          <div v-if="historyError" class="text-center text-[10px] text-gray-500">
             {{ t('conversation.historyFailed') }}
             <a-button type="text" size="mini" @click="loadHistory">{{ t('common.retry') }}</a-button>
           </div>
@@ -1194,7 +1194,7 @@ onUnmounted(() => {
     <!-- 输入区：停止按钮和附件预览在胶囊上方；胶囊内右侧是上传、展开和发送 -->
     <div class="mt-3 flex flex-shrink-0 flex-col gap-2">
       <div v-if="isGenerating" class="relative mb-1.5 flex h-8 justify-center">
-        <div class="absolute left-0 top-[50%] translate-y-[-50%] text-[14px] text-[#374151]">
+        <div class="absolute left-0 top-[50%] translate-y-[-50%] text-[10px] text-[#374151]">
           {{ thinking || !hasReplyContent ? t('common.thinking') : t('common.generatingNow') }}<span class="thinking-dots"><i>.</i><i>.</i><i>.</i></span>
         </div>
         <a-button type="outline" class="stop-response" @click="stopGeneration">
@@ -1229,7 +1229,7 @@ onUnmounted(() => {
             :title="item.name"
           >
             <icon-file class="flex-shrink-0 text-gray-500" :size="14" />
-            <span class="min-w-0 truncate text-xs">{{ item.name }}</span>
+            <span class="min-w-0 truncate text-[10px]">{{ item.name }}</span>
             <icon-close
               class="flex-shrink-0 cursor-pointer text-gray-400 hover:text-gray-700"
               :size="12"
@@ -1351,7 +1351,8 @@ onUnmounted(() => {
   background: transparent;
   box-shadow: none;
   padding: 5px 0;
-  line-height: 22px;
+  font-size: 11px;
+  line-height: 20px;
   outline: none;
 }
 
