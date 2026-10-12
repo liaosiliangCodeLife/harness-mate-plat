@@ -95,6 +95,17 @@ onUnmounted(() => {
           <div class="text-base text-gray-700">
             {{ t('home.intro') }}
           </div>
+          <div class="mt-8">
+            <div class="mb-3 text-lg font-medium text-gray-900">{{ t('home.videos') }}</div>
+            <video
+              :src="t('home.hermesVideoUrl')"
+              controls
+              playsinline
+              preload="metadata"
+              class="w-full rounded-lg border border-gray-200 bg-black"
+            ></video>
+            <p class="mt-3 text-xs text-gray-400">{{ t('home.hermesVideoCaption') }}</p>
+          </div>
           <a-tabs class="mt-8" default-active-key="hermes">
             <a-tab-pane key="hermes" :title="t('home.hermesTab')">
           <div class="mt-8 min-w-0">
@@ -397,14 +408,6 @@ onUnmounted(() => {
           </a-tabs>
           <div class="mt-8">
             <div class="mb-3 text-lg font-medium text-gray-900">{{ t('home.guide') }}</div>
-            <div
-              class="flex h-32 items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50"
-            >
-              <span class="text-xs text-gray-400">{{ t('home.comingSoon') }}</span>
-            </div>
-          </div>
-          <div class="mt-6">
-            <div class="mb-3 text-lg font-medium text-gray-900">{{ t('home.videos') }}</div>
             <div
               class="flex h-32 items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50"
             >

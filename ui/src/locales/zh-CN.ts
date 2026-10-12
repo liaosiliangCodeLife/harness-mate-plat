@@ -152,6 +152,10 @@ const zhCN = {
     guide: '使用教程',
     videos: '操作视频',
     comingSoon: '内容待补充',
+    hermesVideoUrl:
+      'https://github.com/user-attachments/assets/37a72b18-1e67-4e1d-bc62-2ab1cda46a90',
+    hermesVideoCaption:
+      'Hermes 版操作视频（5 分 45 秒）：登录平台 → 创建智能体 → 配对 Hermes → 安装插件 → 与本地智能体对话；DeepSeek Harness 版视频稍后补充。',
     pairDshStep1: '# 1) 取插件包（插件在仓库 plugin/dsh 子目录）：',
     pairDshStep2: '# 2) 安装（身份已填入，脚本会写配置并接好插件链接）：',
     pairDshStep3:

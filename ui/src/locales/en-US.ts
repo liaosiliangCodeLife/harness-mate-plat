@@ -154,6 +154,10 @@ const enUS = {
     guide: 'User Guide',
     videos: 'Walkthroughs',
     comingSoon: 'Coming soon',
+    hermesVideoUrl:
+      'https://github.com/user-attachments/assets/f7557744-636e-4aa0-9756-b10ca886f5c5',
+    hermesVideoCaption:
+      'Hermes walkthrough (5:45): sign in → create an agent → pair Hermes → install the plugin → chat with your local agent. A DeepSeek Harness version is coming soon.',
     pairDshStep1: '# 1) Fetch the plugin (plugin/dsh in the repo):',
     pairDshStep2: '# 2) Install (credentials are filled in; the script writes config and links the plugin):',
     pairDshStep3:
