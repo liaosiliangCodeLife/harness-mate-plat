@@ -1,4 +1,5 @@
 import { Message } from '@arco-design/web-vue'
+import { closeAllHermesChannels } from '@/hooks/use-hermes-channel'
 import { apiPrefix, httpCode } from '@/config'
 import { useCredentialStore } from '@/stores/credential'
 import router from '@/router'
@@ -19,6 +20,7 @@ let lastUnauthorizedRedirectAt = 0
  * @return：无
  */
 const redirectToLogin = async (message?: string) => {
+  closeAllHermesChannels()
   useCredentialStore().clear()
   const now = Date.now()
   if (now - lastUnauthorizedRedirectAt < 1500) {

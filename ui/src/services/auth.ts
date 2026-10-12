@@ -1,3 +1,4 @@
+import { closeAllHermesChannels } from '@/hooks/use-hermes-channel'
 import { post } from '@/utils/request'
 import { type BaseResponse } from '@/models/base'
 import {
@@ -29,7 +30,8 @@ export const register = (req: RegisterRequest) => {
   })
 }
 
-// 退出登录请求
+// 退出登录请求：先关掉本页通道，再通知服务端
 export const logout = () => {
+  closeAllHermesChannels()
   return post<BaseResponse<any>>(`/auth/logout`)
 }

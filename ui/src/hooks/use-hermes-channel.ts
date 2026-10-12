@@ -1,4 +1,5 @@
 import { onUnmounted, ref } from 'vue'
+import { Message } from '@arco-design/web-vue'
 import type { Agent } from '@/models/agent'
 import type { AgentConversation } from '@/models/agent-conversation'
 import type { HermesInboundFrame, HermesReplyData } from '@/models/hermes-channel'
@@ -11,6 +12,20 @@ export type ChannelStatus = 'connecting' | 'connected' | 'disconnected' | 'recon
 const RETRY_DELAYS = [1000, 2000, 5000, 10000]
 // 网关约 61 秒无帧会断开；每 40 秒向自身发一条 to，网关丢弃且不进业务
 const HEARTBEAT_INTERVAL = 40000
+// 建连后存活不足该时长，记一次短命连接
+const SHORT_LIVED_MS = 5000
+// 连续短命连接达到该次数，视为被其它客户端抢占同一 ws_session_id
+const PREEMPT_LIMIT = 3
+
+// 本页每个通道实例的关闭函数，供登出或 401 时一次性关掉
+const activeClosers = new Set<() => void>()
+
+// 关掉当前页面上所有 Hermes 通道
+export const closeAllHermesChannels = () => {
+  activeClosers.forEach((close) => {
+    close()
+  })
+}
 
 type HermesChannelOptions = {
   agent: () => Agent
@@ -28,6 +43,10 @@ export const useHermesChannel = (options: HermesChannelOptions) => {
   let retryTimer: number | null = null
   let heartbeatTimer: number | null = null
   let currentSocket: WebSocket | null = null
+  let openedAt = 0
+  let shortLivedCount = 0
+  let preemptWarned = false
+  let pageListenersBound = false
 
   // gateway_key 和网关地址都有值才允许连接
   const canConnect = () => {
@@ -130,12 +149,14 @@ export const useHermesChannel = (options: HermesChannelOptions) => {
       return
     }
     currentSocket = socket
+    openedAt = 0
 
     socket.onopen = () => {
       if (seq !== connectSeq) {
         socket.close()
         return
       }
+      openedAt = Date.now()
       retryIndex = 0
       status.value = 'connected'
       startHeartbeat(socket, wsSessionId)
@@ -154,7 +175,37 @@ export const useHermesChannel = (options: HermesChannelOptions) => {
       if (currentSocket === socket) {
         currentSocket = null
       }
+      if (openedAt > 0) {
+        const aliveMs = Date.now() - openedAt
+        openedAt = 0
+        if (aliveMs < SHORT_LIVED_MS) {
+          shortLivedCount += 1
+        } else {
+          shortLivedCount = 0
+        }
+        if (shortLivedCount >= PREEMPT_LIMIT) {
+          stopped = true
+          clearRetryTimer()
+          status.value = 'disconnected'
+          if (!preemptWarned) {
+            preemptWarned = true
+            Message.warning('该会话已在其他设备或页面打开，已停止重连')
+          }
+          return
+        }
+      }
       scheduleReconnect()
+    }
+  }
+
+  // 仅在 OPEN / CLOSING 时带正常关闭码断开，其它状态忽略以免抛错
+  const closeCurrentSocket = () => {
+    const socket = currentSocket
+    if (!socket) {
+      return
+    }
+    if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CLOSING) {
+      socket.close(1000, 'client-closed')
     }
   }
 
@@ -164,13 +215,41 @@ export const useHermesChannel = (options: HermesChannelOptions) => {
     connectSeq += 1
     clearRetryTimer()
     clearHeartbeat()
-    currentSocket?.close()
+    closeCurrentSocket()
     currentSocket = null
+  }
+
+  // 真正卸载时断开；进入往返缓存（persisted）时保持连接
+  const onPageHide = (event: PageTransitionEvent) => {
+    if (event.persisted === true) {
+      return
+    }
+    stop()
+  }
+
+  const onBeforeUnload = () => {
+    stop()
+  }
+
+  const bindPageCloseListeners = () => {
+    if (pageListenersBound) {
+      return
+    }
+    window.addEventListener('pagehide', onPageHide)
+    window.addEventListener('beforeunload', onBeforeUnload)
+    pageListenersBound = true
+  }
+
+  const unbindPageCloseListeners = () => {
+    window.removeEventListener('pagehide', onPageHide)
+    window.removeEventListener('beforeunload', onBeforeUnload)
+    pageListenersBound = false
   }
 
   // 按当前智能体配置重新连接；密钥为空时保持断开且不重试
   const start = () => {
     stop()
+    activeClosers.add(stop)
     gatewayReady.value = Boolean(options.agent().gateway_key?.trim())
     if (!canConnect()) {
       status.value = 'disconnected'
@@ -180,6 +259,7 @@ export const useHermesChannel = (options: HermesChannelOptions) => {
     stopped = false
     retryIndex = 0
     status.value = 'connecting'
+    bindPageCloseListeners()
     void openSocket()
   }
 
@@ -194,6 +274,8 @@ export const useHermesChannel = (options: HermesChannelOptions) => {
   }
 
   onUnmounted(() => {
+    unbindPageCloseListeners()
+    activeClosers.delete(stop)
     stop()
     status.value = 'disconnected'
   })
