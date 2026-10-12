@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { audioToText, messageToAudio } from '@/services/audio'
 import { Message } from '@arco-design/web-vue'
+import { t } from '@/locales'
 
 export const useAudioToText = () => {
   // 1.定义自定义hooks所需数据
@@ -12,7 +13,7 @@ export const useAudioToText = () => {
     try {
       loading.value = true
       const resp = await audioToText(file)
-      Message.success('语音转文本成功')
+      Message.success(t('webapp.speechToText'))
       text.value = resp.data.text
     } finally {
       loading.value = false
@@ -80,7 +81,7 @@ export const useAudioPlayer = () => {
         }, { once: true })
       }
     } catch (error) {
-      Message.error(`添加sourceBuffer出错: ${error}`)
+      Message.error(t('utils.sourceBuffer', { error }))
     }
   }
 

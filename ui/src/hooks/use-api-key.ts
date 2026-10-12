@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import { Message, Modal } from '@arco-design/web-vue'
+import { t } from '@/locales'
 import type { BasePaginatorRequest } from '@/models/base'
 import {
   type CreateApiKeyRequest,
@@ -61,9 +62,8 @@ export const useGetApiKeysWithPage = () => {
 export const useDeleteApiKey = () => {
   const handleDeleteApiKey = (api_key_id: string, callback?: () => void) => {
     Modal.warning({
-      title: '要删除该API秘钥吗?',
-      content:
-        '删除秘钥后，无法使用该秘钥访问 LLMOps 个人空间中的所有 Agent，并且无法恢复，如果临时关闭请使用禁用功能。',
+      title: t('openapi.deleteTitle'),
+      content: t('openapi.deleteContent'),
       hideCancel: false,
       onOk: async () => {
         try {

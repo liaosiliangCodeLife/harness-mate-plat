@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { onUnmounted, ref, watch } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import { Message, type FieldRule, type Form, type ValidatedError } from '@arco-design/web-vue'
 import { register, sendRegisterCode } from '@/services/auth'
+import { t } from '@/locales'
 
 // 1.弹窗开关由登录页控制，注册成功后把邮箱交回登录表单
 const props = defineProps({
@@ -10,28 +11,29 @@ const props = defineProps({
 const emits = defineEmits(['update:visible', 'registered'])
 
 const PASSWORD_PATTERN = /^(?=.*[a-zA-Z])(?=.*\d).{8,16}$/
-const PASSWORD_MESSAGE = '密码长度为8-16位，且必须同时包含字母和数字'
 const COUNTDOWN_SECONDS = 60
-const emailRules: FieldRule[] = [
-  { type: 'email', required: true, message: '登录账号必须是合法的邮箱' },
-]
-const codeRules: FieldRule[] = [{ required: true, message: '验证码不能为空' }]
-const passwordRules: FieldRule[] = [
-  { required: true, message: '密码不能为空' },
-  { match: PASSWORD_PATTERN, message: PASSWORD_MESSAGE },
-]
-const confirmPasswordRules: FieldRule[] = [
-  { required: true, message: '确认密码不能为空' },
+const emailRules = computed<FieldRule[]>(() => [
+  { type: 'email', required: true, message: t('auth.emailInvalid') },
+])
+const codeRules = computed<FieldRule[]>(() => [
+  { required: true, message: t('auth.codeRequired') },
+])
+const passwordRules = computed<FieldRule[]>(() => [
+  { required: true, message: t('auth.passwordRequired') },
+  { match: PASSWORD_PATTERN, message: t('auth.passwordRule') },
+])
+const confirmPasswordRules = computed<FieldRule[]>(() => [
+  { required: true, message: t('auth.confirmPasswordRequired') },
   {
     validator: (value: string, callback: (error?: string) => void) => {
       if (value && value !== form.value.password) {
-        callback('两次输入的密码不一致')
+        callback(t('auth.passwordMismatch'))
         return
       }
       callback()
     },
   },
-]
+])
 
 const formRef = ref<InstanceType<typeof Form>>()
 const form = ref({
@@ -102,7 +104,7 @@ const submitRegister = async () => {
       password: form.value.password,
       password_confirm: form.value.password_confirm,
     })
-    Message.success('注册成功，请登录')
+    Message.success(t('auth.registerSuccess'))
     emits('registered', email)
     stopCountdown()
     return true
@@ -133,8 +135,8 @@ onUnmounted(() => {
     hide-title
     align-center
     modal-class="register-modal"
-    ok-text="注册"
-    cancel-text="取消"
+    :ok-text="t('auth.signUp')"
+    :cancel-text="t('common.cancel')"
     :on-before-ok="submitRegister"
     @cancel="hideModal"
     @update:visible="(value: boolean) => emits('update:visible', value)"
@@ -142,9 +144,9 @@ onUnmounted(() => {
     <div class="mb-5 flex items-start justify-between gap-3">
       <div>
         <div class="register-title">
-          注册 <span class="register-accent">Harness Mate</span>
+          {{ t('auth.registerTitle') }} <span class="register-accent">Harness Mate</span>
         </div>
-        <p class="register-subtitle">用邮箱验证码注册，几秒即可完成</p>
+        <p class="register-subtitle">{{ t('auth.registerSubtitle') }}</p>
       </div>
       <a-button type="text" size="small" class="!text-gray-400" @click="hideModal">
         <template #icon>
@@ -155,20 +157,20 @@ onUnmounted(() => {
     <a-form ref="formRef" :model="form" layout="vertical" class="register-form">
       <a-form-item
         field="email"
-        label="邮箱"
+        :label="t('auth.email')"
         :rules="emailRules"
         :validate-trigger="['change', 'blur']"
       >
-        <a-input v-model="form.email" placeholder="请输入邮箱" />
+        <a-input v-model="form.email" :placeholder="t('auth.emailPlaceholder')" />
       </a-form-item>
       <a-form-item
         field="code"
-        label="验证码"
+        :label="t('auth.code')"
         :rules="codeRules"
         :validate-trigger="['change', 'blur']"
       >
         <div class="flex w-full gap-2">
-          <a-input v-model="form.code" placeholder="请输入验证码" class="flex-1" />
+          <a-input v-model="form.code" :placeholder="t('auth.codePlaceholder')" class="flex-1" />
           <a-button
             type="outline"
             html-type="button"
@@ -177,25 +179,25 @@ onUnmounted(() => {
             :disabled="countdown > 0"
             @click="sendCode"
           >
-            {{ countdown > 0 ? `${countdown}s 后重新获取` : '获取验证码' }}
+            {{ countdown > 0 ? t('auth.resendIn', { seconds: countdown }) : t('auth.getCode') }}
           </a-button>
         </div>
       </a-form-item>
       <a-form-item
         field="password"
-        label="密码"
+        :label="t('auth.passwordLabel')"
         :rules="passwordRules"
         :validate-trigger="['change', 'blur']"
       >
-        <a-input-password v-model="form.password" placeholder="8-16位，需同时包含字母和数字" />
+        <a-input-password v-model="form.password" :placeholder="t('auth.passwordHint')" />
       </a-form-item>
       <a-form-item
         field="password_confirm"
-        label="确认密码"
+        :label="t('auth.confirmPassword')"
         :rules="confirmPasswordRules"
         :validate-trigger="['change', 'blur']"
       >
-        <a-input-password v-model="form.password_confirm" placeholder="请再次输入密码" />
+        <a-input-password v-model="form.password_confirm" :placeholder="t('auth.confirmPasswordPlaceholder')" />
       </a-form-item>
     </a-form>
   </a-modal>

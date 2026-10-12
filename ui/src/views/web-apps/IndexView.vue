@@ -21,6 +21,7 @@ import { useGenerateSuggestedQuestions } from '@/hooks/use-ai'
 import { QueueEvent } from '@/config'
 import { uploadImage } from '@/services/upload-file'
 import AudioRecorder from 'js-audio-recorder'
+import { t } from '@/locales'
 
 // 1.定义页面所需数据
 const route = useRoute()
@@ -167,7 +168,7 @@ const addConversation = () => {
   if (!newConversation.value) {
     newConversation.value = {
       id: '',
-      name: 'New Conversation',
+      name: t('webapp.draftName'),
       summary: '',
       created_at: 0,
     }
@@ -193,13 +194,13 @@ const handleScroll = async (event: UIEvent) => {
 const handleSubmit = async () => {
   // 11.1 检测是否录入了query，如果没有则结束
   if (query.value.trim() === '') {
-    Message.warning('用户提问不能为空')
+    Message.warning(t('webapp.queryEmpty'))
     return
   }
 
   // 11.2 检测上次提问是否结束，如果没结束不能发起新提问
   if (webAppChatLoading.value) {
-    Message.warning('上一次提问还未结束，请稍等')
+    Message.warning(t('webapp.pending'))
     return
   }
 
@@ -291,7 +292,7 @@ const handleSubmit = async () => {
         messages.value[0].answer = data?.observation
       } else if (event === QueueEvent.timeout) {
         // 5.16 事件为timeout，则人工提示超时信息
-        messages.value[0].answer = '当前Agent执行已超时，无法得到答案，请重试'
+        messages.value[0].answer = t('webapp.timeout')
       } else {
         // 11.11 处理其他类型的事件，直接填充覆盖数据
         position += 1
@@ -321,7 +322,7 @@ const handleSubmit = async () => {
       // 11.14 将newConversation填充到会话列表中
       unpinned_conversations.value.unshift({
         id: messages.value[0].conversation_id,
-        name: 'New Conversation',
+        name: t('webapp.draftName'),
         summary: '',
         created_at: messages.value[0].created_at,
       })
@@ -375,7 +376,7 @@ const handleSubmitQuestion = async (question: string) => {
 const triggerFileInput = () => {
   // 1.检测上传的图片数量是否超过5
   if (image_urls.value.length >= 5) {
-    Message.error('对话上传图片数量不能超过5张')
+    Message.error(t('webapp.imageLimit'))
     return
   }
 
@@ -397,7 +398,7 @@ const handleFileChange = async (event: Event) => {
       uploadFileLoading.value = true
       const resp = await uploadImage(selectedFile)
       image_urls.value.push(resp.data.image_url)
-      Message.success('上传图片成功')
+      Message.success(t('webapp.imageUploaded'))
     } finally {
       uploadFileLoading.value = false
     }
@@ -413,9 +414,9 @@ const handleStartRecord = async () => {
   try {
     isRecording.value = true
     await recorder.start()
-    Message.success('开始录音')
+    Message.success(t('webapp.recordingStarted'))
   } catch (error: any) {
-    Message.error(`录音失败: ${error}`)
+    Message.error(t('webapp.recordingFailed', { error }))
     isRecording.value = false
   }
 }
@@ -430,10 +431,10 @@ const handleStopRecord = async () => {
 
       // 11.2 调用语音转文本处理器并将文本填充到query中
       await handleAudioToText(audioBlob.value)
-      Message.success('语音转文本成功')
+      Message.success(t('webapp.speechToText'))
       query.value = text.value
     } catch (error: any) {
-      Message.error(`录音失败: ${error}`)
+      Message.error(t('webapp.recordingFailed', { error }))
     } finally {
       isRecording.value = false // 标记为停止录音
     }
@@ -502,13 +503,13 @@ onUnmounted(() => {
         <template #icon>
           <icon-edit />
         </template>
-        新增会话
+        {{ t('webapp.newConversation') }}
       </a-button>
       <!-- 会话列表 -->
       <div class="flex-1 overflow-scroll scrollbar-w-none">
         <!-- 置顶会话 -->
         <div class="mb-4">
-          <div class="text-gray-700 font-semibold mb-2">置顶会话</div>
+          <div class="text-gray-700 font-semibold mb-2">{{ t('webapp.pinned') }}</div>
           <!-- 空白骨架屏 -->
           <a-skeleton :loading="getWebAppConversationsLoading" animation>
             <a-skeleton-line :rows="2" :line-height="32" :line-spacing="4" />
@@ -534,10 +535,10 @@ onUnmounted(() => {
                   </template>
                 </a-button>
                 <template #content>
-                  <a-doption @click="() => changeIsPinned(idx, true)">取消置顶</a-doption>
-                  <a-doption @click="() => updateName(idx, true)">重命名</a-doption>
+                  <a-doption @click="() => changeIsPinned(idx, true)">{{ t('webapp.unpin') }}</a-doption>
+                  <a-doption @click="() => updateName(idx, true)">{{ t('webapp.rename') }}</a-doption>
                   <a-doption class="text-red-700" @click="() => deleteConversation(idx, true)">
-                    删除
+                    {{ t('webapp.delete') }}
                   </a-doption>
                 </template>
               </a-dropdown>
@@ -548,12 +549,12 @@ onUnmounted(() => {
             <template #image>
               <icon-empty :size="36" />
             </template>
-            暂无置顶会话
+            {{ t('webapp.emptyPinned') }}
           </a-empty>
         </div>
         <!-- 对话列表 -->
         <div class="mb-4">
-          <div class="text-gray-700 font-semibold mb-2">对话列表</div>
+          <div class="text-gray-700 font-semibold mb-2">{{ t('webapp.conversations') }}</div>
           <!-- 空白骨架屏 -->
           <a-skeleton :loading="getWebAppConversationsLoading" animation>
             <a-skeleton-line :rows="2" :line-height="32" :line-spacing="4" />
@@ -587,10 +588,10 @@ onUnmounted(() => {
                   </template>
                 </a-button>
                 <template #content>
-                  <a-doption @click="() => changeIsPinned(idx, false)">置顶会话</a-doption>
-                  <a-doption @click="() => updateName(idx, false)"> 重命名</a-doption>
+                  <a-doption @click="() => changeIsPinned(idx, false)">{{ t('webapp.pin') }}</a-doption>
+                  <a-doption @click="() => updateName(idx, false)">{{ t('webapp.rename') }}</a-doption>
                   <a-doption class="text-red-700" @click="() => deleteConversation(idx, false)">
-                    删除
+                    {{ t('webapp.delete') }}
                   </a-doption>
                 </template>
               </a-dropdown>
@@ -607,7 +608,7 @@ onUnmounted(() => {
             <template #image>
               <icon-empty :size="36" />
             </template>
-            暂无会话列表
+            {{ t('webapp.emptyList') }}
           </a-empty>
         </div>
       </div>
@@ -657,7 +658,7 @@ onUnmounted(() => {
             <template #icon>
               <icon-poweroff />
             </template>
-            停止响应
+            {{ t('webapp.stop') }}
           </a-button>
         </div>
       </div>
@@ -723,7 +724,7 @@ onUnmounted(() => {
                 type="text"
                 class="flex-1 outline-0"
                 @keyup.enter="handleSubmit"
-                :placeholder="`给 &quot;${web_app?.name ?? '&quot;聊天机器人&quot;'}&quot; 发送消息`"
+                :placeholder="t('webapp.sendTo', { name: web_app?.name || t('webapp.chatbot') })"
               />
               <!-- 上传图片输入框 -->
               <input type="file" ref="fileInput" accept="image/*" @change="handleFileChange" class="hidden" />
@@ -796,7 +797,7 @@ onUnmounted(() => {
         </div>
         <!-- 底部提示信息 -->
         <div class="text-center text-gray-500 text-xs py-4">
-          内容由AI生成，无法确保真实准确，仅供参考。
+          {{ t('webapp.disclaimer') }}
         </div>
       </div>
     </div>

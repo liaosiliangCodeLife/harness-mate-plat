@@ -6,6 +6,7 @@ import { useGetOpenServer } from '@/hooks/use-server'
 import { useUploadImage } from '@/hooks/use-upload-file'
 import type { Agent, CreateAgentRequest, UpdateAgentRequest } from '@/models/agent'
 import { generateAgentId } from '@/services/agent'
+import { t } from '@/locales'
 
 // 1.定义自定义组件所需数据
 const props = defineProps({
@@ -54,10 +55,10 @@ const agentTypeLabel = computed(() => {
     return '-'
   }
   if (value === 'HERMES') {
-    return 'Hermes智能体'
+    return t('space.hermesAgent')
   }
   if (value === 'DEEPSEEK_HARNESS') {
-    return 'DeepSeekHarness智能体'
+    return t('space.deepseekAgent')
   }
   return value
 })
@@ -196,12 +197,12 @@ const readAgentInfoInput = (text: string): Record<string, any> | undefined | nul
   try {
     const parsed = JSON.parse(trimmed) as unknown
     if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      Message.error('agent_info 必须是合法的 JSON 对象')
+      Message.error(t('agent.jsonInvalid'))
       return null
     }
     return parsed as Record<string, any>
   } catch {
-    Message.error('agent_info 必须是合法的 JSON 对象')
+    Message.error(t('agent.jsonInvalid'))
     return null
   }
 }
@@ -242,7 +243,7 @@ const saveAgent = async ({ errors }: { errors: Record<string, ValidatedError> | 
     const req = buildUpdateRequest(props.agent)
     if (!req) return
     if (Object.keys(req).length === 0) {
-      Message.warning('没有需要保存的修改')
+      Message.warning(t('agent.noChanges'))
       return
     }
     await handleUpdateAgent(props.agent.id, req)
@@ -299,7 +300,7 @@ watch(
   >
     <!-- 顶部标题 -->
     <div class="flex items-center justify-between">
-      <div class="text-lg font-bold text-gray-700">{{ isEdit ? '编辑智能体' : '创建智能体' }}</div>
+      <div class="text-lg font-bold text-gray-700">{{ isEdit ? t('agent.edit') : t('agent.create') }}</div>
       <a-button type="text" class="!text-gray-700" size="small" @click="hideModal">
         <template #icon>
           <icon-close />
@@ -323,12 +324,12 @@ watch(
         </a-form-item>
         <a-form-item
           field="name"
-          label="智能体名称"
-          :rules="[{ required: true, message: '请输入智能体名称' }]"
+          :label="t('agent.name')"
+          :rules="[{ required: true, message: t('agent.nameRequired') }]"
         >
-          <a-input v-model="form.name" placeholder="请输入智能体名称" />
+          <a-input v-model="form.name" :placeholder="t('agent.namePlaceholder')" />
         </a-form-item>
-        <a-form-item v-if="isEdit" label="智能体接入类型">
+        <a-form-item v-if="isEdit" :label="t('agent.type')">
           <div class="flex w-full min-w-0 items-center gap-1 min-h-[32px]">
             <div class="break-all text-gray-700" :title="agentTypeLabel">
               {{ agentTypeLabel }}
@@ -338,20 +339,20 @@ watch(
         <a-form-item v-if="isEdit" field="agent_info" label="agent_info">
           <a-textarea
             v-model="form.agent_info"
-            placeholder='可选，请填写 JSON 对象，例如 {"role":"assistant"}'
+            :placeholder="t('agent.infoPlaceholder')"
             :auto-size="{ minRows: 4, maxRows: 8 }"
           />
         </a-form-item>
         <a-form-item
           field="bot_id"
-          label="智能体业务标识"
-          :rules="isEdit ? [] : [{ required: true, message: '请输入智能体业务标识' }]"
+          :label="t('agent.businessId')"
+          :rules="isEdit ? [] : [{ required: true, message: t('agent.businessIdRequired') }]"
         >
           <div class="flex w-full items-center gap-2">
             <a-input
               v-model="form.bot_id"
               :disabled="isEdit"
-              placeholder="请输入 bot_id，全局唯一"
+              :placeholder="t('agent.botIdPlaceholder')"
               class="flex-1"
             />
             <a-button
@@ -360,20 +361,20 @@ watch(
               :loading="generatingBotId"
               @click="fillGeneratedId('bot_id')"
             >
-              生成
+              {{ t('common.generate') }}
             </a-button>
           </div>
         </a-form-item>
         <a-form-item
           field="peer_id"
-          label="对端设备标识"
-          :rules="isEdit ? [] : [{ required: true, message: '请输入对端设备标识' }]"
+          :label="t('agent.peerId')"
+          :rules="isEdit ? [] : [{ required: true, message: t('agent.peerIdRequired') }]"
         >
           <div class="flex w-full items-center gap-2">
             <a-input
               v-model="form.peer_id"
               :disabled="isEdit"
-              placeholder="请输入 peer_id"
+              :placeholder="t('agent.peerIdPlaceholder')"
               class="flex-1"
             />
             <a-button
@@ -382,11 +383,11 @@ watch(
               :loading="generatingPeerId"
               @click="fillGeneratedId('peer_id')"
             >
-              生成
+              {{ t('common.generate') }}
             </a-button>
           </div>
         </a-form-item>
-        <a-form-item label="智能体密钥">
+        <a-form-item :label="t('agent.secret')">
           <div class="flex w-full min-w-0 items-center gap-1 min-h-[32px]">
             <a-spin :loading="gatewayLoading" class="min-w-0 flex-1">
               <div class="break-all text-gray-700" :title="gatewayKey || '-'">
@@ -395,7 +396,7 @@ watch(
             </a-spin>
           </div>
         </a-form-item>
-        <a-form-item label="网关地址">
+        <a-form-item :label="t('agent.gatewayUrl')">
           <div class="flex w-full min-w-0 items-center gap-1 min-h-[32px]">
             <a-spin :loading="gatewayLoading" class="min-w-0 flex-1">
               <div class="break-all text-gray-700" :title="gatewayUrl || '-'">
@@ -407,9 +408,9 @@ watch(
         <!-- 底部按钮 -->
         <div class="flex items-center justify-end">
           <a-space :size="16">
-            <a-button class="rounded-lg" @click="hideModal">取消</a-button>
+            <a-button class="rounded-lg" @click="hideModal">{{ t('common.cancel') }}</a-button>
             <a-button :loading="submitLoading" type="primary" html-type="submit" class="rounded-lg">
-              保存
+              {{ t('common.save') }}
             </a-button>
           </a-space>
         </div>

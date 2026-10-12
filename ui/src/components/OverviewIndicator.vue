@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import { t } from '@/locales'
+
 // 1.定义自定义组件所需数据
 const props = defineProps({
   title: { type: String, default: '' },
   help: { type: String, default: '' },
   data: { type: Number, default: 0 },
-  unit: { type: String, default: '次' },
+  unit: { type: String, default: '' },
   pop: { type: Number, default: 0 },
 })
 </script>
@@ -29,11 +31,11 @@ const props = defineProps({
         <div class="text-2xl">
           {{ props.data % 1 !== 0 ? props.data.toFixed(2) : props.data.toString() }}
         </div>
-        <div class="">{{ props.unit }}</div>
+        <div class="">{{ props.unit || t('common.times') }}</div>
       </div>
       <!-- 环比 -->
       <div class="flex items-center gap-1 text-gray-500 text-xs">
-        <div class="">环比</div>
+        <div class="">{{ t('common.periodCompare') }}</div>
         <a-avatar shape="circle" :size="14" class="bg-blue-200">
           <icon-sync class="text-[14px] text-blue-700" />
         </a-avatar>

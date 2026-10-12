@@ -2,6 +2,7 @@
 import moment from 'moment'
 import { Message } from '@arco-design/web-vue'
 import { useGetServer } from '@/hooks/use-server'
+import { t } from '@/locales'
 
 // 1.拉取当前账号的 WS 网关
 const { loading: getServerLoading, server, loadServer } = useGetServer()
@@ -18,7 +19,7 @@ const formatTimestamp = (timestamp: number | null) => {
 const copyValue = async (value: string) => {
   try {
     await navigator.clipboard.writeText(value)
-    Message.success('已复制')
+    Message.success(t('common.copied'))
   } catch (err) {
     Message.error(String(err))
   }
@@ -32,7 +33,7 @@ loadServer().catch(() => undefined)
   <a-spin :loading="getServerLoading" class="block h-full w-full">
     <a-card v-if="server" class="rounded-lg">
       <a-descriptions :column="1" bordered>
-        <a-descriptions-item label="网关地址">
+        <a-descriptions-item :label="t('server.gatewayAddress')">
           <div class="flex items-center gap-1 min-w-0">
             <div class="break-all min-w-0 flex-1" :title="server.gateway_url">
               {{ server.gateway_url }}
@@ -41,7 +42,7 @@ loadServer().catch(() => undefined)
               type="text"
               size="mini"
               class="flex-shrink-0 !text-gray-400 !w-5 !h-5"
-              title="复制"
+              :title="t('common.copy')"
               @click="copyValue(server.gateway_url)"
             >
               <template #icon>
@@ -50,7 +51,7 @@ loadServer().catch(() => undefined)
             </a-button>
           </div>
         </a-descriptions-item>
-        <a-descriptions-item label="网关密钥">
+        <a-descriptions-item :label="t('server.gatewaySecret')">
           <div class="flex items-center gap-1 min-w-0">
             <div class="break-all min-w-0 flex-1" :title="server.gateway_key">
               {{ server.gateway_key }}
@@ -59,7 +60,7 @@ loadServer().catch(() => undefined)
               type="text"
               size="mini"
               class="flex-shrink-0 !text-gray-400 !w-5 !h-5"
-              title="复制"
+              :title="t('common.copy')"
               @click="copyValue(server.gateway_key)"
             >
               <template #icon>
@@ -68,17 +69,17 @@ loadServer().catch(() => undefined)
             </a-button>
           </div>
         </a-descriptions-item>
-        <a-descriptions-item label="更新时间">
+        <a-descriptions-item :label="t('server.updatedAt')">
           {{ formatTimestamp(server.updated_at) }}
         </a-descriptions-item>
-        <a-descriptions-item label="创建时间">
+        <a-descriptions-item :label="t('server.createdAt')">
           {{ formatTimestamp(server.created_at) }}
         </a-descriptions-item>
       </a-descriptions>
     </a-card>
     <a-empty
       v-else-if="!getServerLoading"
-      description="暂无频道服务"
+      :description="t('server.emptyChannel')"
       class="h-[400px] flex flex-col items-center justify-center"
     />
   </a-spin>

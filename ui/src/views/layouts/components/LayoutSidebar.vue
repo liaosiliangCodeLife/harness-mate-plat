@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useRoute } from 'vue-router'
+import { t } from '@/locales'
 import IconHomeFull from '@/components/icons/IconHomeFull.vue'
 import IconHome from '@/components/icons/IconHome.vue'
 import IconSpaceFull from '@/components/icons/IconSpaceFull.vue'
@@ -18,7 +19,7 @@ const route = useRoute()
     >
       <icon-home-full v-if="route.path.startsWith('/home')" />
       <icon-home v-else />
-      主页
+      {{ t('layout.home') }}
     </router-link>
     <router-link
       to="/space/apps"
@@ -26,14 +27,14 @@ const route = useRoute()
     >
       <icon-space-full v-if="route.path.startsWith('/space')" />
       <icon-space v-else />
-      个人空间
+      {{ t('layout.mySpace') }}
     </router-link>
     <router-link
       to="/server"
       :class="`flex items-center gap-2 h-8 leading-8 rounded-lg transition-all px-2 text-gray-700 hover:text-gray-900 hover:bg-gray-200 ${route.path.startsWith('/server') ? 'bg-gray-100' : ''}`"
     >
       <icon-link />
-      频道服务
+      {{ t('layout.channelService') }}
     </router-link>
     <router-link
       to="/openapi"
@@ -41,7 +42,7 @@ const route = useRoute()
       active-class="bg-gray-100"
     >
       <icon-email />
-      业务对接
+      {{ t('layout.apiIntegration') }}
     </router-link>
   </div>
 </template>

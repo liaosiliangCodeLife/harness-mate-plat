@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { authorize, provider } from '@/services/oauth'
 import { Message } from '@arco-design/web-vue'
+import { t } from '@/locales'
 
 export const useProvider = () => {
   // 1.定义hooks所需数据
@@ -31,7 +32,7 @@ export const useAuthorize = () => {
     try {
       loading.value = true
       const resp = await authorize(provider_name, code)
-      Message.success('登录成功，正在跳转')
+      Message.success(t('auth.loginSuccess'))
       authorization.value = resp.data
     } finally {
       loading.value = false

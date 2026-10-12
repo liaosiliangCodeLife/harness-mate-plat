@@ -4,6 +4,7 @@ import type { ChatMessage } from '@/models/agent-message'
 import { formatFileSize, splitMessageFiles } from '@/utils/chat-files'
 import { stripCursorGlyphs } from '@/utils/hermes-channel'
 import { renderMarkdown } from '@/utils/markdown'
+import { t } from '@/locales'
 
 // 1.定义自定义组件所需数据
 const props = defineProps({
@@ -55,7 +56,7 @@ const html = computed(() => renderMarkdown(parts.value.text))
           v-if="(message.thinking || generating) && !message.content && !parts.files.length"
           class="text-gray-500"
         >
-          思考中<span class="thinking-dots"><i>.</i><i>.</i><i>.</i></span>
+          {{ t('common.thinking') }}<span class="thinking-dots"><i>.</i><i>.</i><i>.</i></span>
         </div>
         <template v-else>
           <a-image-preview-group v-if="imageFiles.length">
@@ -121,7 +122,7 @@ const html = computed(() => renderMarkdown(parts.value.text))
             class="markdown-body chat-markdown break-all"
             v-html="html"
           ></div>
-          <div v-if="generating" class="mt-1 text-xs text-gray-500">生成中…</div>
+          <div v-if="generating" class="mt-1 text-xs text-gray-500">{{ t('common.generating') }}</div>
         </template>
       </div>
     </div>

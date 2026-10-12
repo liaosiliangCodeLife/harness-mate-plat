@@ -23,8 +23,12 @@ export default {
   remove: (key: string): void => {
     localStorage.removeItem(key)
   },
-  // 清除localStorage中的所有值
+  // 清除localStorage中的所有值，保留界面语言
   clear: (): void => {
+    const language = localStorage.getItem('harness_mate_language')
     localStorage.clear()
+    if (language === 'zh-CN' || language === 'en-US') {
+      localStorage.setItem('harness_mate_language', language)
+    }
   },
 }

@@ -14,6 +14,7 @@ import type { Agent } from '@/models/agent'
 import { ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PairHermesModal from '@/views/space/apps/components/PairHermesModal.vue'
+import { t, translateAgentInfoKey } from '@/locales'
 
 // 1.定义页面所需数据
 const route = useRoute()
@@ -66,6 +67,7 @@ const agentInfoRows = (agent: Agent) => {
   }
   return Object.entries(agentInfo).map(([key, value]) => ({
     key,
+    label: translateAgentInfoKey(key),
     value: formatAgentInfoValue(value),
   }))
 }
@@ -86,11 +88,11 @@ const openEdit = (agent: Agent) => {
 // 8.二次确认后软删除，并重新加载当前搜索条件下的第一页
 const confirmRemoveAgent = (agent: Agent) => {
   Modal.warning({
-    title: '删除智能体',
-    content: `确认删除智能体「${agent.name}」吗？`,
+    title: t('space.deleteAgentTitle'),
+    content: t('space.deleteAgentContent', { name: agent.name }),
     hideCancel: false,
-    okText: '删除',
-    cancelText: '取消',
+    okText: t('common.delete'),
+    cancelText: t('common.cancel'),
     onOk: async () => {
       await handleDeleteAgent(agent.id)
       await loadAgents(true, String(route.query?.search_word ?? ''), props.agentType)
@@ -171,9 +173,9 @@ watch(
                 <span class="flex-shrink-0 text-sm font-semibold text-[#165DFF]">@{{ agent.agent_type }}</span>
               </div>
               <a-tag v-if="agent.status === 1" color="green" size="small" class="flex-shrink-0">
-                在线
+                {{ t('common.online') }}
               </a-tag>
-              <a-tag v-else color="gray" size="small" class="flex-shrink-0">离线</a-tag>
+              <a-tag v-else color="gray" size="small" class="flex-shrink-0">{{ t('common.offline') }}</a-tag>
             </div>
           </div>
           <div class="flex flex-col gap-1 text-xs text-gray-500">
@@ -182,15 +184,15 @@ watch(
                 v-for="item in agentInfoRows(agent)"
                 :key="item.key"
                 class="truncate"
-                :title="`${item.key}: ${item.value}`"
+                :title="`${item.label}: ${item.value}`"
               >
-                {{ item.key }}: {{ item.value }}
+                {{ item.label }}: {{ item.value }}
               </div>
             </template>
             <div v-else>-</div>
-            <div>会话数: {{ agent.conversation_count }}</div>
+            <div>{{ t('space.conversationCount', { count: agent.conversation_count }) }}</div>
             <div>Token: {{ agent.total_token_count }}</div>
-            <div>最后活跃: {{ formatTimestamp(agent.last_seen_at) }}</div>
+            <div>{{ t('space.lastActive', { time: formatTimestamp(agent.last_seen_at) }) }}</div>
           </div>
           <div class="mt-3 flex items-center justify-end" @click.stop>
             <a-dropdown position="br" trigger="click">
@@ -199,11 +201,13 @@ watch(
               </a-button>
               <template #content>
                 <a-doption @click.stop="openPairHermes(agent)">{{
-                  agent.agent_type === 'DEEPSEEK_HARNESS' ? '配对 DeepSeek Harness' : '配对 Hermes'
+                  agent.agent_type === 'DEEPSEEK_HARNESS'
+                    ? t('space.pairDeepseek')
+                    : t('space.pairHermes')
                 }}</a-doption>
-                <a-doption @click.stop="openEdit(agent)">编辑</a-doption>
+                <a-doption @click.stop="openEdit(agent)">{{ t('common.edit') }}</a-doption>
                 <a-doption class="!text-red-700" @click.stop="confirmRemoveAgent(agent)">
-                  删除
+                  {{ t('common.delete') }}
                 </a-doption>
               </template>
             </a-dropdown>
@@ -212,7 +216,7 @@ watch(
       </a-col>
       <a-col v-if="!getAgentsWithPageLoading && agents.length === 0" :span="24">
         <a-empty
-          description="暂无智能体"
+          :description="t('space.emptyAgents')"
           class="h-[400px] flex flex-col items-center justify-center"
         />
       </a-col>
@@ -222,11 +226,11 @@ watch(
       <a-col v-if="paginator.current_page <= paginator.total_page" :span="24" align="center">
         <a-space class="my-4">
           <a-spin />
-          <div class="text-gray-400">加载中</div>
+          <div class="text-gray-400">{{ t('common.loading') }}</div>
         </a-space>
       </a-col>
       <a-col v-else :span="24" align="center">
-        <div class="text-gray-400 my-4">数据已加载完成</div>
+        <div class="text-gray-400 my-4">{{ t('common.loaded') }}</div>
       </a-col>
     </a-row>
   </a-spin>

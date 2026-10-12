@@ -7,6 +7,7 @@
  * @All Rights Reserve By Brtc
  */
 import type { ChatFile, ChatMediaKind } from '@/models/agent-message'
+import { t } from '@/locales'
 
 const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'])
 const AUDIO_EXTENSIONS = new Set(['mp3', 'm4a', 'wav', 'ogg', 'opus', 'flac', 'aac'])
@@ -74,7 +75,7 @@ const extensionFromUrl = (url: string) => {
 const fileNameFromUrl = (url: string) => {
   const clean = url.split('?')[0]?.split('#')[0] || ''
   const name = decodeURIComponent(clean.split('/').pop() || '')
-  return name || '文件'
+  return name || t('common.file')
 }
 
 /*

@@ -2,6 +2,7 @@ import { Message } from '@arco-design/web-vue'
 import { apiPrefix, httpCode } from '@/config'
 import { useCredentialStore } from '@/stores/credential'
 import router from '@/router'
+import { t } from '@/locales'
 
 // 1.超时时间为100s
 const TIME_OUT = 100000
@@ -24,7 +25,7 @@ const redirectToLogin = async (message?: string) => {
     return
   }
   lastUnauthorizedRedirectAt = now
-  Message.error(message || '请重新登录')
+  Message.error(message || t('utils.signInAgain'))
   await router.replace({ name: 'auth-login' })
 }
 
@@ -97,7 +98,7 @@ const baseFetch = <T>(url: string, fetchOptions: FetchOptionType): Promise<T> =>
     // 11.使用定时器来检测是否超时
     new Promise((resolve, reject) => {
       setTimeout(() => {
-        reject('接口已超时')
+        reject(t('utils.timeout'))
       }, TIME_OUT)
     }),
     // 12.发起一个正常请求
@@ -110,9 +111,9 @@ const baseFetch = <T>(url: string, fetchOptions: FetchOptionType): Promise<T> =>
             resolve(json)
           } else if (json.code === httpCode.unauthorized) {
             await redirectToLogin(json.message)
-            reject(new Error(json.message || '请重新登录'))
+            reject(new Error(json.message || t('utils.signInAgain')))
           } else if (silent) {
-            reject(new Error(json.message || '请求失败'))
+            reject(new Error(json.message || t('utils.requestFailed')))
           } else if (json.code === httpCode.notFound) {
             if (messageOnNotFound) {
               Message.error(json.message)
@@ -181,7 +182,7 @@ const handleStream = (
   return new Promise((resolve, reject) => {
     // 1.检测网络请求是否正常
     if (!response.ok) {
-      reject(new Error('网络请求失败'))
+      reject(new Error(t('utils.networkFailed')))
       return
     }
 
@@ -285,7 +286,7 @@ export const upload = <T>(url: string, options: any = {}): Promise<T> => {
             resolve(response)
           } else if (response.code === httpCode.unauthorized) {
             await redirectToLogin(response.message)
-            reject(new Error(response.message || '请重新登录'))
+            reject(new Error(response.message || t('utils.signInAgain')))
           } else {
             reject(xhr.response)
           }

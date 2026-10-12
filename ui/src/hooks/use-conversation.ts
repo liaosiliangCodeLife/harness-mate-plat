@@ -9,6 +9,7 @@ import {
   updateConversationName,
 } from '@/services/conversation'
 import { Message, Modal } from '@arco-design/web-vue'
+import { t } from '@/locales'
 
 export const useGetConversationMessagesWithPage = () => {
   // 1.定义hooks所需数据
@@ -72,8 +73,8 @@ export const useGetConversationMessagesWithPage = () => {
 export const useDeleteConversation = () => {
   const handleDeleteConversation = (conversation_id: string, success_callback?: () => void) => {
     Modal.warning({
-      title: '要删除该会话么?',
-      content: '删除会话信息后，删除会话后，该会话下的所有聊天记录将被永远删除，无法找回。',
+      title: t('conversation.deleteConfirmTitle'),
+      content: t('conversation.deleteConfirmContent'),
       hideCancel: false,
       onOk: async () => {
         // 1.点击确定后向API接口发起请求

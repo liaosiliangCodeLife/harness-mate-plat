@@ -2,6 +2,7 @@
 import { computed, type PropType } from 'vue'
 import { Message } from '@arco-design/web-vue'
 import type { Agent } from '@/models/agent'
+import { t } from '@/locales'
 
 // 1.定义弹窗所需数据：bot_key 取智能体的 gateway_key
 const props = defineProps({
@@ -31,35 +32,35 @@ const installCommand = computed(() => {
   }
   if (isDeepSeekHarness.value) {
     return [
-      '# 1) 取插件包（插件在仓库 plugin/dsh 子目录）：',
+      t('home.pairDshStep1'),
       'git clone --depth 1 https://github.com/liaosiliangCodeLife/harness-mate-plat.git',
       'mkdir -p ~/Documents && mv harness-mate-plat/plugin/dsh ~/Documents/harness-mate',
       '',
-      '# 2) 安装（身份已填入，脚本会写配置并接好插件链接）：',
+      t('home.pairDshStep2'),
       `cd ~/Documents/harness-mate && chmod +x install.sh && ./install.sh ${botId} ${botKey}`,
       '',
-      '# 3) 如需确认网关地址：~/.dsh/profiles/desktop/cordis.patch.yml 里的 gatewayUrl 应为平台自己的网关地址（形如 wss://<平台域名>:<端口>/ws）。',
+      t('home.pairDshStep3'),
       '',
-      '# 4) 完全退出 DeepSeek Harness 再重新打开（不是只关窗口）；回平台进智能体发一条消息能收到回复即端到端打通。',
+      t('home.pairDshStep4'),
       '',
     ].join('\n')
   }
   return [
-    '# 1) 装插件（一条命令，插件在仓库 plugin/hermes 子目录）：',
+    t('home.pairHermesStep1'),
     'hermes plugins install liaosiliangCodeLife/harness-mate-plat/plugin/hermes --yes-deps --enable',
     '',
-    '# 2) 写入身份到 ~/.hermes/.env：',
+    t('home.pairHermesStep2'),
     "cat >> ~/.hermes/.env <<'EOF'",
     `HARNESS_MATE_BOT_ID=${botId}`,
     `HARNESS_MATE_BOT_KEY=${botKey}`,
-    '# 默认放行所有 peer（如需收紧再配 HARNESS_MATE_ALLOWED_PEERS）',
+    t('home.pairHermesPeers'),
     'HARNESS_MATE_DM_POLICY=open',
     'HARNESS_MATE_ALLOW_ALL_DEVICES=1',
     'EOF',
     '',
-    '# 3) 确认网关地址：打开 ~/.hermes/plugins/HarnessMate/adapter.py 第 62 行 WS_GATEWAY_WS_URL，应为平台自己的网关地址（形如 wss://<平台域名>:<端口>/ws）。',
+    t('home.pairHermesStep3'),
     '',
-    '# 4) 重启并验证：hermes gateway restart；日志出现「harness_mate 已连接 WS 网关」即成功，回平台进智能体发一条消息能收到回复即端到端打通。',
+    t('home.pairHermesStep4'),
     'hermes gateway restart',
     '',
   ].join('\n')
@@ -74,7 +75,7 @@ const hideModal = () => {
 const copyValue = async (value: string) => {
   try {
     await navigator.clipboard.writeText(value)
-    Message.success('已复制')
+    Message.success(t('common.copied'))
   } catch (err) {
     Message.error(String(err))
   }
@@ -95,7 +96,7 @@ const copyInstallCommand = async () => {
   }
   try {
     await navigator.clipboard.writeText(text)
-    Message.success('已复制')
+    Message.success(t('common.copied'))
   } catch {
     return
   }
@@ -114,9 +115,9 @@ const copyInstallCommand = async () => {
     <div class="mb-6 flex items-start justify-between gap-3">
       <div>
         <div class="pair-hermes-title">
-          配对 <span class="pair-hermes-accent">{{ isDeepSeekHarness ? 'DeepSeek Harness' : 'Hermes' }}</span>
+          {{ t('home.pairTitle') }} <span class="pair-hermes-accent">{{ isDeepSeekHarness ? 'DeepSeek Harness' : 'Hermes' }}</span>
         </div>
-        <p class="pair-hermes-subtitle">点下方按钮复制安装指令，粘贴到本机终端执行即可完成配对</p>
+        <p class="pair-hermes-subtitle">{{ t('home.pairSubtitle') }}</p>
       </div>
       <a-button type="text" size="small" class="!text-gray-400" @click="hideModal">
         <template #icon>
@@ -140,7 +141,7 @@ const copyInstallCommand = async () => {
           :disabled="!row.value"
           @click="copyValue(row.value)"
         >
-          复制
+          {{ t('common.copy') }}
         </a-button>
       </div>
       <a-button
@@ -151,11 +152,11 @@ const copyInstallCommand = async () => {
         :disabled="!installCommand"
         @click="copyInstallCommand"
       >
-        一键复制安装指令
+        {{ t('home.pairCopyAll') }}
       </a-button>
     </div>
     <template #footer>
-      <a-button class="pair-close-btn" @click="hideModal">关闭</a-button>
+      <a-button class="pair-close-btn" @click="hideModal">{{ t('common.close') }}</a-button>
     </template>
   </a-modal>
 </template>

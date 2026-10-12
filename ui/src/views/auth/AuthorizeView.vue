@@ -3,6 +3,7 @@ import { onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthorize } from '@/hooks/use-oauth'
 import { useCredentialStore } from '@/stores/credential'
+import { t } from '@/locales'
 
 // 1.定义页面所需的数据
 const route = useRoute()
@@ -27,7 +28,7 @@ onMounted(async () => {
 
 <template>
   <div class="w-full min-h-screen flex items-center justify-center bg-white">
-    <a-spin tip="第三方授权登录中..."></a-spin>
+    <a-spin :tip="t('auth.authorizing')"></a-spin>
   </div>
 </template>
 

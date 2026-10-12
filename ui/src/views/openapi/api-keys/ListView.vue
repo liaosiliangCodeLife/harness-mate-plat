@@ -9,6 +9,7 @@ import {
 import moment from 'moment'
 import CreateOrUpdateApiKeyModal from './components/CreateOrUpdateApiKeyModal.vue'
 import { Message } from '@arco-design/web-vue'
+import { t } from '@/locales'
 
 // 1.定义页面所需基础数据
 const route = useRoute()
@@ -40,7 +41,7 @@ const req = computed(() => {
 const copyToClipboard = async (text: string) => {
   try {
     await navigator.clipboard.writeText(text)
-    Message.success('复制成功')
+    Message.success(t('openapi.copySuccess'))
   } catch (err) {
     Message.error(String(err))
   }
@@ -100,7 +101,7 @@ watch(
     >
       <template #columns>
         <a-table-column
-          title="秘钥"
+          :title="t('openapi.apiKey')"
           data-index="api_key"
           :width="400"
           header-cell-class="rounded-tl-lg !bg-gray-200 text-gray-700"
@@ -122,7 +123,7 @@ watch(
           </template>
         </a-table-column>
         <a-table-column
-          title="状态"
+          :title="t('openapi.status')"
           data-index="is_active"
           header-cell-class="!bg-gray-200 text-gray-700"
           cell-class="bg-transparent text-gray-700"
@@ -134,13 +135,13 @@ watch(
                 class="w-2 h-2 bg-green-500 rounded-sm border border-green-700"
               ></div>
               <div v-else class="w-2 h-2 bg-gray-500 rounded-sm border border-gray-700"></div>
-              <div v-if="record.is_active" class="text-gray-700">可用</div>
-              <div v-else class="text-gray-700">已禁用</div>
+              <div v-if="record.is_active" class="text-gray-700">{{ t('openapi.active') }}</div>
+              <div v-else class="text-gray-700">{{ t('openapi.disabled') }}</div>
             </a-space>
           </template>
         </a-table-column>
         <a-table-column
-          title="创建时间"
+          :title="t('openapi.createdAt')"
           data-index="created_at"
           header-cell-class="!bg-gray-200 text-gray-700"
           cell-class="bg-transparent text-gray-700"
@@ -150,7 +151,7 @@ watch(
           </template>
         </a-table-column>
         <a-table-column
-          title="备注"
+          :title="t('openapi.remark')"
           :width="400"
           data-index="remark"
           header-cell-class="!bg-gray-200 text-gray-700"
@@ -161,7 +162,7 @@ watch(
           </template>
         </a-table-column>
         <a-table-column
-          title="操作"
+          :title="t('openapi.actions')"
           data-index="operator"
           header-cell-class="rounded-tr-lg !bg-gray-200 text-gray-700"
           cell-class="bg-transparent text-gray-700 !h-[40px]"
@@ -205,7 +206,7 @@ watch(
                       }
                     "
                   >
-                    重命名
+                    {{ t('openapi.rename') }}
                   </a-doption>
                   <a-doption
                     class="!text-red-700"
@@ -216,7 +217,7 @@ watch(
                         })
                     "
                   >
-                    删除
+                    {{ t('common.delete') }}
                   </a-doption>
                 </template>
               </a-dropdown>

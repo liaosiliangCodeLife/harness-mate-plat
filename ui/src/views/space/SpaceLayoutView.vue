@@ -5,6 +5,7 @@ import type { Agent } from '@/models/agent'
 import CreateAgentModal from '@/views/space/apps/components/CreateAgentModal.vue'
 import AssistantAgentBackground from '@/assets/images/assistant-agent-background.png'
 import { useAccountStore } from '@/stores/account'
+import { t } from '@/locales'
 
 const route = useRoute()
 const router = useRouter()
@@ -96,7 +97,7 @@ watch(
             <span v-if="accountStore.account?.name">{{ accountStore.account.name[0] }}</span>
             <icon-user v-else :size="18" />
           </a-avatar>
-          <div class="text-lg font-medium text-gray-900">个人空间</div>
+          <div class="text-lg font-medium text-gray-900">{{ t('space.title') }}</div>
         </div>
         <!-- 创建按钮 -->
         <a-button
@@ -105,7 +106,7 @@ watch(
           class="rounded-lg"
           @click="openCreateAgent"
         >
-          创建智能体
+          {{ t('space.createAgent') }}
         </a-button>
       </div>
       <!-- 导航按钮+搜索框 -->
@@ -117,21 +118,21 @@ watch(
             class="rounded-lg text-gray-700 px-3 h-8 leading-8 hover:bg-gray-200 transition-all"
             active-class="bg-gray-100"
           >
-            Hermes智能体
+            {{ t('space.hermesAgent') }}
           </router-link>
           <router-link
             to="/space/deepseek-harness"
             class="rounded-lg text-gray-700 px-3 h-8 leading-8 hover:bg-gray-200 transition-all"
             active-class="bg-gray-100"
           >
-            DeepSeekHarness智能体
+            {{ t('space.deepseekAgent') }}
           </router-link>
         </div>
         <!-- 右侧搜索，仅智能体列表需要 -->
         <a-input-search
           v-if="isAgentListPage"
           v-model="searchWord"
-          placeholder="输入关键词进行搜索"
+          :placeholder="t('space.searchPlaceholder')"
           class="w-[240px] bg-white rounded-lg border-gray-300"
           @search="search"
         />

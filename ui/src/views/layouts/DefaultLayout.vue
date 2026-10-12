@@ -7,9 +7,12 @@ import { useGetCurrentUser } from '@/hooks/use-account'
 import { useCredentialStore } from '@/stores/credential'
 import { useAccountStore } from '@/stores/account'
 import SettingModal from '@/views/layouts/components/SettingModal.vue'
+import { setLocale, t, type AppLocale } from '@/locales'
+import { useI18n } from 'vue-i18n'
 
 // 1.定义页面所需数据
 const settingModalVisible = ref(false)
+const { locale } = useI18n()
 const router = useRouter()
 const credentialStore = useCredentialStore()
 const accountStore = useAccountStore()
@@ -30,6 +33,11 @@ watch(
     avatarLoadFailed.value = false
   },
 )
+
+const toggleLanguage = () => {
+  const next: AppLocale = locale.value === 'en-US' ? 'zh-CN' : 'en-US'
+  setLocale(next)
+}
 
 // 2.退出登录按钮
 const handleLogout = async () => {
@@ -90,7 +98,7 @@ onMounted(async () => {
             href="https://github.com/liaosiliangCodeLife/harness-mate-plat"
             target="_blank"
             rel="noopener noreferrer"
-            title="GitHub 仓库"
+            :title="t('layout.githubRepo')"
             class="mb-5 flex h-9 w-[128px] items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-gray-200 text-sm text-gray-600 transition-all hover:bg-gray-300 hover:text-gray-800"
           >
             <icon-github :size="16" />
@@ -124,13 +132,19 @@ onMounted(async () => {
               <template #icon>
                 <icon-settings />
               </template>
-              账号设置
+              {{ t('layout.accountSettings') }}
+            </a-doption>
+            <a-doption @click="toggleLanguage">
+              <template #icon>
+                <icon-language />
+              </template>
+              {{ t('layout.switchLanguage') }}
             </a-doption>
             <a-doption @click="handleLogout">
               <template #icon>
                 <icon-poweroff />
               </template>
-              退出登录
+              {{ t('layout.signOut') }}
             </a-doption>
           </template>
         </a-dropdown>

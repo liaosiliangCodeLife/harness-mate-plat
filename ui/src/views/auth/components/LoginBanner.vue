@@ -1,19 +1,21 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import BannerImage from '@/assets/images/login-banner.png'
+import { t } from '@/locales'
 
 // 轮播图列表
-const carousels = [
+const carousels = computed(() => [
   {
-    slogan: '开箱即用的端到端智能体平台',
-    subSlogan: '丰富的应用组件，覆盖大多数典型业务场景',
+    slogan: t('auth.bannerReady'),
+    subSlogan: t('auth.bannerReadySub'),
     image: BannerImage,
   },
   {
-    slogan: '零代码5分钟接入你的本地智能体',
-    subSlogan: '高效连接你的本地智能体',
+    slogan: t('auth.bannerFast'),
+    subSlogan: t('auth.bannerFastSub'),
     image: BannerImage,
   },
-]
+])
 </script>
 
 <template>

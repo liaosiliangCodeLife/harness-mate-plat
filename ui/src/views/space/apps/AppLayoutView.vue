@@ -9,6 +9,7 @@ import {
   detailAgentKey,
   reloadDetailAgentKey,
 } from '@/views/space/apps/detail-agent'
+import { t, translateAgentInfoKey } from '@/locales'
 
 const route = useRoute()
 const { loading, agent, loadAgent } = useGetAgent()
@@ -73,6 +74,7 @@ const agentInfoRows = computed(() => {
   }
   return Object.entries(agentInfo).map(([key, value]) => ({
     key,
+    label: translateAgentInfoKey(key),
     value: formatAgentInfoValue(value),
   }))
 })
@@ -123,8 +125,8 @@ watch(
         <div class="flex flex-1 flex-col justify-center min-w-0 gap-1">
           <div class="flex items-center gap-2">
             <div class="text-gray-700 font-bold truncate">{{ agent.name }}</div>
-            <a-tag v-if="agent.status === 1" color="green" size="small">在线</a-tag>
-            <a-tag v-else color="gray" size="small">离线</a-tag>
+            <a-tag v-if="agent.status === 1" color="green" size="small">{{ t('common.online') }}</a-tag>
+            <a-tag v-else color="gray" size="small">{{ t('common.offline') }}</a-tag>
           </div>
           <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 min-w-0">
             <template v-if="agentInfoRows.length">
@@ -132,9 +134,9 @@ watch(
                 v-for="item in agentInfoRows"
                 :key="item.key"
                 class="max-w-full truncate"
-                :title="`${item.key}: ${item.value}`"
+                :title="`${item.label}: ${item.value}`"
               >
-                {{ item.key }}: {{ item.value }}
+                {{ item.label }}: {{ item.value }}
               </span>
             </template>
             <span v-else>-</span>
@@ -150,7 +152,7 @@ watch(
         <template #icon>
           <icon-plus />
         </template>
-        新增会话
+        {{ t('space.newConversation') }}
       </a-button>
     </div>
     <!-- 会话列表 -->

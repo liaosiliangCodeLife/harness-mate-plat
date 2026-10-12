@@ -2,6 +2,7 @@
 import { useUpdateConversationName } from '@/hooks/use-conversation'
 import type { Form, ValidatedError } from '@arco-design/web-vue'
 import { ref, watch } from 'vue'
+import { t } from '@/locales'
 
 // 1.定义自定义组件所需数据
 const props = defineProps({
@@ -61,7 +62,7 @@ watch(
   >
     <!-- 顶部标题 -->
     <div class="flex items-center justify-between">
-      <div class="text-lg font-bold text-gray-700">重命名</div>
+      <div class="text-lg font-bold text-gray-700">{{ t('webapp.renameTitle') }}</div>
       <a-button type="text" class="!text-gray-700" size="small" @click="hideModal">
         <template #icon>
           <icon-close />
@@ -73,24 +74,24 @@ watch(
       <a-form ref="formRef" :model="form" layout="vertical" @submit="saveName">
         <a-form-item
           field="name"
-          label="会话名称"
+          :label="t('webapp.name')"
           asterisk-position="end"
-          :rules="[{ required: true, message: '会话名称不能为空' }]"
+          :rules="[{ required: true, message: t('webapp.nameRequired') }]"
         >
-          <a-input v-model:model-value="form.name" placeholder="请输入新会话名称" />
+          <a-input v-model:model-value="form.name" :placeholder="t('webapp.namePlaceholder')" />
         </a-form-item>
         <!-- 底部按钮 -->
         <div class="flex items-center justify-between">
           <div class=""></div>
           <a-space :size="16">
-            <a-button class="rounded-lg" @click="hideModal">取消</a-button>
+            <a-button class="rounded-lg" @click="hideModal">{{ t('common.cancel') }}</a-button>
             <a-button
               :loading="updateConversationNameLoading"
               type="primary"
               html-type="submit"
               class="rounded-lg"
             >
-              确认
+              {{ t('common.confirm') }}
             </a-button>
           </a-space>
         </div>

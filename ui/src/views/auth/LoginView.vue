@@ -2,6 +2,7 @@
 import LoginBanner from './components/LoginBanner.vue'
 import LoginForm from './components/LoginForm.vue'
 import loginBackground from '@/assets/images/login-background.png'
+import { t } from '@/locales'
 </script>
 
 <template>
@@ -13,7 +14,7 @@ import loginBackground from '@/assets/images/login-background.png'
     <!-- 顶部站点Logo -->
     <div class="fixed top-6 left-[22px] inline-flex items-center">
       <div class="bg-white/80 text-gray-800 rounded-md px-3 h-8 leading-8 z-50 shadow-sm">
-        Harness-Mate 端到端智能体平台
+        {{ t('auth.brand') }}
       </div>
     </div>
     <!-- 左侧banner -->
@@ -25,7 +26,7 @@ import loginBackground from '@/assets/images/login-background.png'
       <!-- 底部footer -->
       <div class="absolute right-0 bottom-0 w-full">
         <footer class="flex items-center justify-center h-10 text-gray-600 text-center">
-          Harness-Mate 端到端智能体平台
+          {{ t('auth.brand') }}
         </footer>
       </div>
     </div>

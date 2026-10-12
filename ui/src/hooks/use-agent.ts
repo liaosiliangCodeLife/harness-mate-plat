@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import { Message } from '@arco-design/web-vue'
+import { t } from '@/locales'
 import {
   createAgent,
   createAgentConversation,
@@ -215,7 +216,7 @@ export const useCreateAgentConversation = () => {
     try {
       loading.value = true
       await createAgentConversation(agent_id, req)
-      Message.success('会话已创建')
+      Message.success(t('agent.sessionCreated'))
     } finally {
       loading.value = false
     }

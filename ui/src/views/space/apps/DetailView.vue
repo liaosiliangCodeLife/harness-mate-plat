@@ -7,6 +7,7 @@ import {
   conversationListVersionKey,
   detailAgentKey,
 } from '@/views/space/apps/detail-agent'
+import { t } from '@/locales'
 
 // 1.页面基础数据：会话属于当前详情页的智能体
 const route = useRoute()
@@ -94,7 +95,7 @@ watch(conversationListVersion, () => {
       </div>
       <a-empty
         v-if="agentMatched && !getConversationsLoading && conversations.length === 0"
-        description="暂无会话"
+        :description="t('space.emptyConversations')"
         class="h-[400px] flex flex-col items-center justify-center"
       />
       <a-row v-if="paginator.total_page >= 2">
@@ -105,11 +106,11 @@ watch(conversationListVersion, () => {
         >
           <a-space class="my-4">
             <a-spin />
-            <div class="text-gray-400">加载中</div>
+            <div class="text-gray-400">{{ t('common.loading') }}</div>
           </a-space>
         </a-col>
         <a-col v-else :span="24" align="center">
-          <div class="text-gray-400 my-4">数据已加载完成</div>
+          <div class="text-gray-400 my-4">{{ t('common.loaded') }}</div>
         </a-col>
       </a-row>
     </div>

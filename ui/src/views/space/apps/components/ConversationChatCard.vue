@@ -11,6 +11,7 @@ import {
   type CSSProperties,
   type PropType,
 } from 'vue'
+import { t } from '@/locales'
 import { Message, Modal, type Form } from '@arco-design/web-vue'
 import type { Agent } from '@/models/agent'
 import type { AgentConversation } from '@/models/agent-conversation'
@@ -76,23 +77,23 @@ type ChatAttachment = {
   isImage: boolean
   size?: number
 }
-const TITLE_RULES = [
-  { required: true, message: '会话标题不能为空' },
+const TITLE_RULES = computed(() => [
+  { required: true, message: t('conversation.titleRequired') },
   {
     validator: (value: string, callback: (error?: string) => void) => {
       const text = (value ?? '').trim()
       if (!text) {
-        callback('会话标题不能为空')
+        callback(t('conversation.titleRequired'))
         return
       }
       if (text.length > 255) {
-        callback('会话标题长度不能超过255个字符')
+        callback(t('conversation.titleTooLong'))
         return
       }
       callback()
     },
   },
-]
+])
 
 const RECENT_TURNS = 3
 const EARLIER_LIMIT = 20
@@ -204,7 +205,7 @@ let carriedToolEvents: unknown[] = []
 
 const title = computed(() => {
   const raw = titleOverride.value ?? props.conversation.title
-  return raw?.trim() || '未命名会话'
+  return raw?.trim() || t('common.unnamedSession')
 })
 const draftAutoSize = computed(() =>
   draftExpanded.value ? { minRows: 6, maxRows: 10 } : { minRows: 1, maxRows: 4 },
@@ -228,7 +229,7 @@ const formattedTime = computed(() => {
     return '-'
   }
   const text = moment(timestamp * 1000).format('YYYY-MM-DD HH:mm')
-  return lastMessageAt ? `最后消息 ${text}` : `创建于 ${text}`
+  return lastMessageAt ? t('conversation.lastMessage', { time: text }) : t('conversation.createdAt', { time: text })
 })
 
 // 2.把接口消息转成气泡，user 在右侧，其余角色按助手展示
@@ -456,7 +457,7 @@ const contentForPersist = (content: string, files: ChatFile[]) => {
   }
   return files
     .map((file) => {
-      const label = file.name.replace(/[\[\]]/g, '') || '文件'
+      const label = file.name.replace(/[\[\]]/g, '') || t('common.file')
       return file.is_image ? `![${label}](${file.url})` : `[${label}](${file.url})`
     })
     .join('\n')
@@ -693,7 +694,7 @@ const stopGeneration = () => {
   clearReplyTimeout()
   const sent = sendText('/stop')
   if (!sent) {
-    Message.error('停止指令发送失败')
+    Message.error(t('conversation.stopFailed'))
   }
   acceptReplies = false
   stopRequested = false
@@ -725,7 +726,7 @@ const send = () => {
   }
   if (status.value !== 'connected') {
     reportAgentOnlineStatus(0)
-    Message.error('消息发送失败')
+    Message.error(t('conversation.sendFailed'))
     return
   }
   const clientMsgId = crypto.randomUUID()
@@ -769,20 +770,20 @@ const send = () => {
     clearGenerationIdle()
     clearReplyTimeout()
     reportAgentOnlineStatus(0)
-    Message.error('消息发送失败')
+    Message.error(t('conversation.sendFailed'))
     const failId = crypto.randomUUID()
     messages.value = [
       ...messages.value.filter((item) => item.id !== pendingId),
       {
         id: `ws:${failId}`,
         role: 'assistant',
-        content: '消息发送失败',
+        content: t('conversation.sendFailed'),
         thinking: false,
         status: 2,
       },
     ]
     void scrollToBottom(true)
-    void persistAssistantMessage(failId, '消息发送失败', 2, '', [])
+    void persistAssistantMessage(failId, t('conversation.sendFailed'), 2, '', [])
   }
 }
 
@@ -835,11 +836,11 @@ const submitEdit = async () => {
 // 11.二次确认后删除会话，成功后通知父组件刷新列表
 const confirmDelete = () => {
   Modal.warning({
-    title: '删除会话',
-    content: `确认删除会话「${title.value}」吗？`,
+    title: t('conversation.deleteTitle'),
+    content: t('conversation.deleteContent', { name: title.value }),
     hideCancel: false,
-    okText: '删除',
-    cancelText: '取消',
+    okText: t('common.delete'),
+    cancelText: t('common.cancel'),
     onOk: async () => {
       await handleDeleteAgentConversation(props.agent.id, props.conversation.id)
       emits('refresh')
@@ -859,7 +860,7 @@ const togglePin = async () => {
     await updateAgentConversation(props.agent.id, props.conversation.id, {
       pinned: nextPinned,
     })
-    Message.success(nextPinned === 1 ? '已置顶' : '已取消置顶')
+    Message.success(nextPinned === 1 ? t('conversation.pinned') : t('conversation.unpinned'))
     emits('refresh')
   } catch {
     // 失败时请求层已用后端 message 弹出 Message.error
@@ -894,7 +895,7 @@ const readUploadError = (error: unknown) => {
       return body.response.message
     }
   }
-  return '上传失败'
+  return t('conversation.uploadFailed')
 }
 
 // 14.点击回形针，打开文件选择框；附件达到 5 个时不再继续添加
@@ -903,7 +904,7 @@ const openFilePicker = () => {
     return
   }
   if (attachments.value.length >= MAX_ATTACHMENT_COUNT) {
-    Message.error('对话上传图片数量不能超过5张')
+    Message.error(t('conversation.imageLimit'))
     return
   }
   fileInputRef.value?.click()
@@ -938,7 +939,7 @@ const onFileChange = async (event: Event) => {
     return
   }
   if (attachments.value.length >= MAX_ATTACHMENT_COUNT) {
-    Message.error('对话上传图片数量不能超过5张')
+    Message.error(t('conversation.imageLimit'))
     return
   }
   const extension = fileExtension(file.name)
@@ -946,13 +947,13 @@ const onFileChange = async (event: Event) => {
   const isArchive = ARCHIVE_EXTENSIONS.has(extension)
   if (!isImage && !DOCUMENT_EXTENSIONS.has(extension) && !isArchive) {
     Message.error(
-      '仅支持上传 jpg、jpeg、png、webp、gif、svg、txt、markdown、md、pdf、html、htm、xlsx、xls、doc、docx、csv、zip、rar、7z、tar、gz、tgz、bz2、tbz、tbz2、xz、txz、zst、zipx、cab、jar、war 文件',
+      t('conversation.fileTypes'),
     )
     return
   }
   const maxBytes = isArchive ? MAX_ARCHIVE_UPLOAD_BYTES : MAX_UPLOAD_BYTES
   if (file.size > maxBytes) {
-    Message.error(isArchive ? '压缩包最大不能超过100MB' : '单个文件不能超过 15MB')
+    Message.error(isArchive ? t('conversation.archiveTooLarge') : t('conversation.fileTooLarge'))
     return
   }
   uploading.value = true
@@ -970,7 +971,7 @@ const onFileChange = async (event: Event) => {
       }
     }
     if (!url) {
-      Message.error('上传失败')
+      Message.error(t('conversation.uploadFailed'))
       return
     }
     attachments.value.push({
@@ -1101,16 +1102,16 @@ onUnmounted(() => {
             size="small"
             class="flex-shrink-0"
           >
-            置顶
+            {{ t('common.pin') }}
           </a-tag>
           <div class="text-base text-gray-900 font-bold truncate">{{ title }}</div>
           <a-tag v-if="agent.status === 1" color="green" size="small" class="flex-shrink-0">
-            在线
+            {{ t('common.online') }}
           </a-tag>
-          <a-tag v-else color="gray" size="small" class="flex-shrink-0">离线</a-tag>
+          <a-tag v-else color="gray" size="small" class="flex-shrink-0">{{ t('common.offline') }}</a-tag>
         </div>
         <div class="flex items-center gap-3 text-xs text-gray-400 mt-2">
-          <span class="flex-shrink-0">消息 {{ conversation.message_count }}</span>
+          <span class="flex-shrink-0">{{ t('conversation.messageCount', { count: conversation.message_count }) }}</span>
           <span class="flex-shrink-0">Token {{ conversation.total_token_count }}</span>
           <span class="truncate">{{ formattedTime }}</span>
         </div>
@@ -1120,8 +1121,8 @@ onUnmounted(() => {
           type="text"
           size="mini"
           class="!text-gray-700 flex-shrink-0"
-          :aria-label="isFullscreen ? '退出全屏' : '全屏'"
-          :title="isFullscreen ? '退出全屏' : '全屏'"
+          :aria-label="isFullscreen ? t('common.exitFullscreen') : t('common.fullscreen')"
+          :title="isFullscreen ? t('common.exitFullscreen') : t('common.fullscreen')"
           @click.stop="toggleFullscreen"
         >
           <template #icon>
@@ -1136,11 +1137,11 @@ onUnmounted(() => {
             </template>
           </a-button>
           <template #content>
-            <a-doption @click.stop="openEdit">编辑</a-doption>
+            <a-doption @click.stop="openEdit">{{ t('common.edit') }}</a-doption>
             <a-doption @click.stop="togglePin">
-              {{ conversation.pinned === 1 ? '取消置顶' : '置顶' }}
+              {{ conversation.pinned === 1 ? t('common.unpin') : t('common.pin') }}
             </a-doption>
-            <a-doption class="!text-red-700" @click.stop="confirmDelete">删除</a-doption>
+            <a-doption class="!text-red-700" @click.stop="confirmDelete">{{ t('common.delete') }}</a-doption>
           </template>
         </a-dropdown>
       </div>
@@ -1149,7 +1150,7 @@ onUnmounted(() => {
       v-if="!gatewayReady"
       class="mb-3 rounded-lg bg-orange-50 text-orange-700 text-xs px-3 py-2"
     >
-      未配置 gateway_key，无法连接网关
+      {{ t('conversation.gatewayKeyMissing') }}
     </div>
     <!-- 消息流 -->
     <div class="relative flex-1 min-h-0">
@@ -1163,7 +1164,7 @@ onUnmounted(() => {
         v-if="loadingEarlier"
         class="pointer-events-none absolute inset-x-0 top-1 z-10 text-center text-xs text-gray-400"
       >
-        加载中
+        {{ t('common.loading') }}
       </div>
       <div
         ref="listRef"
@@ -1172,12 +1173,12 @@ onUnmounted(() => {
       >
         <div ref="listTrackRef" class="flex flex-col gap-3">
           <div v-if="historyError" class="text-center text-xs text-gray-500">
-            历史消息加载失败
-            <a-button type="text" size="mini" @click="loadHistory">重试</a-button>
+            {{ t('conversation.historyFailed') }}
+            <a-button type="text" size="mini" @click="loadHistory">{{ t('common.retry') }}</a-button>
           </div>
           <a-empty
             v-else-if="!historyLoading && messages.length === 0 && !thinking"
-            description="暂无消息"
+            :description="t('conversation.empty')"
             class="my-8"
           />
           <chat-bubble
@@ -1194,13 +1195,13 @@ onUnmounted(() => {
     <div class="mt-3 flex flex-shrink-0 flex-col gap-2">
       <div v-if="isGenerating" class="relative mb-1.5 flex h-8 justify-center">
         <div class="absolute left-0 top-[50%] translate-y-[-50%] text-[14px] text-[#374151]">
-          {{ thinking || !hasReplyContent ? '思考中' : '生成中' }}<span class="thinking-dots"><i>.</i><i>.</i><i>.</i></span>
+          {{ thinking || !hasReplyContent ? t('common.thinking') : t('common.generatingNow') }}<span class="thinking-dots"><i>.</i><i>.</i><i>.</i></span>
         </div>
         <a-button type="outline" class="stop-response" @click="stopGeneration">
           <template #icon>
             <icon-poweroff />
           </template>
-          停止响应
+          {{ t('common.stopResponse') }}
         </a-button>
       </div>
       <div v-if="attachments.length > 0" class="flex flex-wrap items-center gap-2">
@@ -1216,7 +1217,7 @@ onUnmounted(() => {
             <button
               type="button"
               class="absolute right-0 top-0 z-10 flex h-4 w-4 items-center justify-center rounded-full bg-gray-900/70 text-white"
-              aria-label="移除图片"
+              :aria-label="t('common.removeImage')"
               @click.stop="attachments.splice(idx, 1)"
             >
               <icon-close :size="10" />
@@ -1246,7 +1247,7 @@ onUnmounted(() => {
               :key="draftExpanded ? 'expanded' : 'normal'"
               v-model="draft"
               :auto-size="draftAutoSize"
-              placeholder="输入消息，Enter 发送，Shift+Enter 换行"
+              :placeholder="t('conversation.inputPlaceholder')"
               :disabled="inputDisabled"
               @keydown="onInputKeydown"
             />
@@ -1259,7 +1260,7 @@ onUnmounted(() => {
               class="!text-gray-700"
               :loading="uploading"
               :disabled="uploading"
-              aria-label="上传文件"
+              :aria-label="t('common.uploadFile')"
               @click="openFilePicker"
             >
               <template #icon>
@@ -1271,7 +1272,7 @@ onUnmounted(() => {
               shape="circle"
               size="mini"
               class="!text-gray-700"
-              :aria-label="draftExpanded ? '收起输入框' : '展开输入框'"
+              :aria-label="draftExpanded ? t('common.collapseInput') : t('common.expandInput')"
               @click="toggleDraftExpanded"
             >
               <template #icon>
@@ -1284,7 +1285,7 @@ onUnmounted(() => {
               shape="circle"
               size="mini"
               class="!text-gray-700"
-              aria-label="发送"
+              :aria-label="t('common.send')"
               :disabled="inputDisabled || (!draft.trim() && attachments.length === 0)"
               @click="send"
             >
@@ -1305,19 +1306,19 @@ onUnmounted(() => {
     </div>
     <a-modal
       v-model:visible="editVisible"
-      title="编辑会话"
+      :title="t('conversation.editTitle')"
       :width="480"
-      ok-text="保存"
-      cancel-text="取消"
+      :ok-text="t('common.save')"
+      :cancel-text="t('common.cancel')"
       :on-before-ok="submitEdit"
     >
       <a-form ref="editFormRef" :model="editForm" layout="vertical">
-        <a-form-item field="title" label="会话标题" :rules="TITLE_RULES" asterisk-position="end">
+        <a-form-item field="title" :label="t('conversation.titleLabel')" :rules="TITLE_RULES" asterisk-position="end">
           <a-input
             v-model="editForm.title"
             :max-length="255"
             show-word-limit
-            placeholder="请输入会话标题"
+            :placeholder="t('conversation.titlePlaceholder')"
           />
         </a-form-item>
       </a-form>

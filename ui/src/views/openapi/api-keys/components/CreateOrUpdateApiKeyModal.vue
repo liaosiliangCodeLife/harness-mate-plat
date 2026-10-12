@@ -2,6 +2,7 @@
 import { ref, watch } from 'vue'
 import { type ValidatedError } from '@arco-design/web-vue'
 import { useCreateApiKey, useUpdateApiKey } from '@/hooks/use-api-key'
+import { t } from '@/locales'
 
 // 1.定义自定义组件所需数据
 const props = defineProps({
@@ -81,7 +82,7 @@ watch(
   >
     <!-- 顶部标题 -->
     <div class="flex items-center justify-between">
-      <div class="text-lg font-bold text-gray-700">{{ api_key_id ? '更新' : '新增' }}秘钥</div>
+      <div class="text-lg font-bold text-gray-700">{{ api_key_id ? t('openapi.updateKey') : t('openapi.createKey') }}</div>
       <a-button
         type="text"
         class="!text-gray-700"
@@ -96,15 +97,15 @@ watch(
     <!-- 中间表单 -->
     <div class="pt-6">
       <a-form ref="formRef" :model="form" layout="vertical" @submit="saveApiKey">
-        <a-form-item field="is_active" label="秘钥状态">
+        <a-form-item field="is_active" :label="t('openapi.keyStatus')">
           <a-switch v-model:model-value="form.is_active" />
         </a-form-item>
-        <a-form-item field="remark" label="秘钥备注">
+        <a-form-item field="remark" :label="t('openapi.keyRemark')">
           <a-textarea
             v-model:model-value="form.remark"
             :max-length="100"
             show-word-limit
-            placeholder="请输入秘钥备注，用于描述秘钥基础信息"
+            :placeholder="t('openapi.keyRemarkPlaceholder')"
           />
         </a-form-item>
         <!-- 底部按钮 -->
@@ -112,7 +113,7 @@ watch(
           <div class=""></div>
           <a-space :size="16">
             <a-button class="rounded-lg" @click="() => emits('update:visible', false)">
-              取消
+              {{ t('common.cancel') }}
             </a-button>
             <a-button
               :loading="updateApiKeyLoading || createApiKeyLoading"
@@ -120,7 +121,7 @@ watch(
               html-type="submit"
               class="rounded-lg"
             >
-              保存
+              {{ t('common.save') }}
             </a-button>
           </a-space>
         </div>

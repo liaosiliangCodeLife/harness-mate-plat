@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { type PropType, ref } from 'vue'
 import { QueueEvent } from '@/config'
+import { t } from '@/locales'
 
 // 1.定义自定义组件所需数据
 const props = defineProps({
@@ -24,7 +25,7 @@ const visible = ref(false)
       <!-- 左侧图标与标题 -->
       <div class="flex items-center gap-2">
         <icon-list />
-        {{ visible ? '隐藏' : '显示' }}运行流程
+        {{ t('agentThought.toggle', { action: visible ? t('agentThought.hide') : t('agentThought.show') }) }}
       </div>
       <!-- 右侧图标 -->
       <div class="">
@@ -60,19 +61,19 @@ const visible = ref(false)
         </template>
         <template #header>
           <div class="text-gray-700" v-if="agent_thought.event === QueueEvent.longTermMemoryRecall">
-            长期记忆召回
+            {{ t('agentThought.memory') }}
           </div>
           <div class="text-gray-700" v-if="agent_thought.event === QueueEvent.agentThought">
-            智能体推理
+            {{ t('agentThought.reasoning') }}
           </div>
           <div class="text-gray-700" v-if="agent_thought.event === QueueEvent.datasetRetrieval">
-            搜索知识库
+            {{ t('agentThought.retrieval') }}
           </div>
           <div class="text-gray-700" v-if="agent_thought.event === QueueEvent.agentAction">
-            调用工具
+            {{ t('agentThought.tool') }}
           </div>
           <div class="text-gray-700" v-if="agent_thought.event === QueueEvent.agentMessage">
-            智能体消息
+            {{ t('agentThought.message') }}
           </div>
         </template>
         <template #extra>
