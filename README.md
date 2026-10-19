@@ -4,6 +4,10 @@
 
 # Harness Mate
 
+<p align="center">
+  [![M8ven Score](https://m8ven.ai/badge/mcp/liaosiliangcodelife-harness-mate-plat-1itulf?v=0887b014a0d75805a646306ac5a034c7)](https://m8ven.ai/mcp/liaosiliangcodelife-harness-mate-plat-1itulf?s=readme) [![awesome-dsh-plugin](https://img.shields.io/badge/awesome--dsh--plugin-listed-blue)](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin)
+</p>
+
 **端到端智能体平台 —— 把你自己电脑上的 AI Agent 变成一个人人可用的 Web 产品。**
 
 > End-to-end agent platform: turn the AI agent running on your own machine into a multi-user web product — chat, files, and open APIs included.
@@ -14,18 +18,6 @@
 
 - 🌐 **在线体验**：<https://harness.alltman.com>
 - 📘 **English**：[README.en.md](README.en.md)
-
-<p align="center">
-  <video src="https://github.com/user-attachments/assets/37a72b18-1e67-4e1d-bc62-2ab1cda46a90" controls width="880" poster="assets/video-cover.png"></video>
-</p>
-
-<p align="center">
-  <a href="https://github.com/user-attachments/assets/37a72b18-1e67-4e1d-bc62-2ab1cda46a90" title="播放 5 分 45 秒完整教程视频">
-    <img src="assets/video-cover.png" width="880" alt="Harness Mate 视频教程（5 分 45 秒）：登录平台 → 创建智能体 → 配对 Hermes → 安装插件 → 与本地智能体对话" />
-  </a>
-  <br/>
-  ▶️ <b>5 分 45 秒完整视频教程</b>（点击画面播放）
-</p>
 
 <p align="center">
   <img src="assets/demo.gif" alt="Harness Mate 端到端演示：主页 → 个人空间 → 与本地智能体对话" width="880" />
@@ -293,3 +285,8 @@ docker/    Docker Compose 部署：nginx、certbot、postgres、redis
 2、复现路径：
 3、是否必现：
 ```
+
+## 社区收录
+
+- [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin) — HarnessMate 插件已收录（PR #7020）
+- [M8ven Trust Index](https://m8ven.ai/mcp/liaosiliangcodelife/harness-mate-plat) — MCP server 安全与信任评级 A

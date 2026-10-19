@@ -4,6 +4,10 @@
 
 # Harness Mate
 
+<p align="center">
+  [![M8ven Score](https://m8ven.ai/badge/mcp/liaosiliangcodelife-harness-mate-plat-1itulf?v=0887b014a0d75805a646306ac5a034c7)](https://m8ven.ai/mcp/liaosiliangcodelife-harness-mate-plat-1itulf?s=readme) [![awesome-dsh-plugin](https://img.shields.io/badge/awesome--dsh--plugin-listed-blue)](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin)
+</p>
+
 **An end-to-end agent platform — turn the AI agent running on your own machine into a web product anyone can use.**
 
 > 中文版：[README.md](README.md)
@@ -14,18 +18,6 @@ It ships with a [Hermes Agent](https://hermes-agent.nousresearch.com/) adapter b
 
 - 🌐 **Live demo**: <https://harness.alltman.com>
 - 📘 **中文文档**: [README.md](README.md)
-
-<p align="center">
-  <video src="https://github.com/user-attachments/assets/f7557744-636e-4aa0-9756-b10ca886f5c5" controls width="880" poster="assets/video-cover-en.png"></video>
-</p>
-
-<p align="center">
-  <a href="https://github.com/user-attachments/assets/f7557744-636e-4aa0-9756-b10ca886f5c5" title="Play the full 5:45 walkthrough (English narration)">
-    <img src="assets/video-cover-en.png" width="880" alt="Harness Mate video walkthrough (English, 5:45): sign in → create an agent → pair Hermes → install the plugin → chat with your local agent" />
-  </a>
-  <br/>
-  ▶️ <b>Full 5:45 video walkthrough</b> (English narration — click to play)
-</p>
 
 <p align="center">
   <img src="assets/demo.gif" alt="Harness Mate demo: home → workspace → chat with your local agent" width="880" />
@@ -293,3 +285,8 @@ Please use these three lines when reporting — it is the fastest way to reprodu
 2. Steps to reproduce:
 3. Always reproducible?:
 ```
+
+## Listed in
+
+- [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin) — HarnessMate plugin listed (PR #7020)
+- [M8ven Trust Index](https://m8ven.ai/mcp/liaosiliangcodelife/harness-mate-plat) — MCP server trust & security grade: A
