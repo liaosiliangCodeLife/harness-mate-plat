@@ -256,6 +256,7 @@ class HarnessMateAdapter(BasePlatformAdapter):
         self._reply_targets: Dict[Tuple[str, str], str] = {}
         self._peer_by_device: Dict[str, str] = {}
         self._last_peer_session: str = ""
+        self._last_thread_by_chat: Dict[str, str] = {}
         self._reply_fingerprints: Dict[str, str] = {}
         self._typing_last_sent: Dict[Tuple[str, str], float] = {}
         self._typing_lock = asyncio.Lock()
@@ -595,6 +596,8 @@ class HarnessMateAdapter(BasePlatformAdapter):
                 data.get("from_device") or data.get("device_id") or peer_session
             ).strip()
             self._reply_targets[(account_id, thread_id)] = peer_session
+            if account_id and thread_id:
+                self._last_thread_by_chat[account_id] = thread_id
             self._peer_by_device[device_id] = peer_session
             self._last_peer_session = peer_session
 
@@ -637,13 +640,23 @@ class HarnessMateAdapter(BasePlatformAdapter):
         """
         * @Author Leon-liao
         * @Function: _resolve_target(chat_id, metadata)
-        * @Description //解析 thread_id 与目标 ws_session_id（路由层与业务 from_device 分离）
+        * @Description //解析 thread_id 与目标 ws_session_id。thread_id 依次从 metadata、最近会话和已登记回复目标兜底
         * @Date :2026/07/02 11:30:00
         * @Param: chat_id: 账号 ID；metadata: 发送元数据
         * @return：(thread_id, to_ws_session) 元组
         """
         metadata = metadata or {}
-        thread_id = str(metadata.get("thread_id") or "")
+        thread_id = str(metadata.get("thread_id") or "").strip()
+        if not thread_id:
+            thread_id = str(metadata.get("session_id") or "").strip()
+        if not thread_id:
+            thread_id = str(self._last_thread_by_chat.get(chat_id) or "").strip()
+        if not thread_id:
+            for (acct, tid), _peer in self._reply_targets.items():
+                candidate = str(tid or "").strip()
+                if acct == chat_id and candidate:
+                    thread_id = candidate
+                    break
 
         to_ws_session = str(self._reply_targets.get((chat_id, thread_id), "")).strip()
         if not to_ws_session:
