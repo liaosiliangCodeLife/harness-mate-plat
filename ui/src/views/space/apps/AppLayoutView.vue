@@ -10,6 +10,7 @@ import {
   reloadDetailAgentKey,
 } from '@/views/space/apps/detail-agent'
 import { t, translateAgentInfoKey } from '@/locales'
+import { agentTypeTheme } from '@/utils/agent-theme'
 
 const route = useRoute()
 const { loading, agent, loadAgent } = useGetAgent()
@@ -17,6 +18,12 @@ const agentId = computed(() => String(route.params?.agent_id ?? ''))
 const createConversationVisible = ref(false)
 const conversationListVersion = ref(0)
 const isConversationList = computed(() => route.name === 'space-apps-detail')
+const pageBg = computed(() => {
+  if (!agent.value || agent.value.id !== agentId.value) {
+    return agentTypeTheme().bg
+  }
+  return agentTypeTheme(agent.value.agent_type).bg
+})
 
 provide(detailAgentKey, agent)
 provide(conversationListVersionKey, conversationListVersion)
@@ -91,9 +98,12 @@ watch(
 </script>
 
 <template>
-  <div class="min-h-screen flex flex-col h-full overflow-hidden">
+  <div
+    class="min-h-screen flex flex-col h-full overflow-hidden"
+    :style="{ backgroundColor: pageBg }"
+  >
     <!-- 顶部智能体信息 -->
-    <div class="flex-shrink-0 bg-gray-50 px-4 py-3 flex items-center gap-3 border-b">
+    <div class="flex-shrink-0 px-4 py-3 flex items-center gap-3 border-b">
       <router-link :to="{ name: 'space-apps-list' }">
         <a-button size="mini">
           <template #icon>

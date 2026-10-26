@@ -215,17 +215,12 @@ const title = computed(() => {
   const raw = titleOverride.value ?? props.conversation.title
   return raw?.trim() || t('common.unnamedSession')
 })
-const agentTheme = computed(() => agentTypeTheme(props.agent.agent_type))
-const showAgentTypeTag = computed(
-  () =>
-    agentTheme.value.labelKey !== null &&
-    props.conversation.message_count === 0 &&
-    messages.value.length === 0,
+const cardEmpty = computed(
+  () => props.conversation.message_count === 0 && messages.value.length === 0,
 )
-const agentTypeLabel = computed(() => {
-  const key = agentTheme.value.labelKey
-  return key ? t(key) : ''
-})
+const cardBg = computed(() =>
+  cardEmpty.value ? agentTypeTheme(props.agent.agent_type).bg : '#FFFFFF',
+)
 const draftAutoSize = computed(() =>
   draftExpanded.value ? { minRows: 6, maxRows: 10 } : { minRows: 1, maxRows: 4 },
 )
@@ -997,6 +992,7 @@ const cardBodyStyle = computed((): CSSProperties => {
     flexDirection: 'column',
     padding: '16px',
     overflow: 'hidden',
+    backgroundColor: cardBg.value,
   }
   if (isFullscreen.value) {
     style.minHeight = 0
@@ -1075,6 +1071,7 @@ onUnmounted(() => {
       <a-card
         class="rounded-lg"
         :class="isFullscreen ? 'h-full min-h-0 flex-1' : 'h-[560px]'"
+        :style="{ backgroundColor: cardBg }"
         :body-style="cardBodyStyle"
       >
     <!-- 头部：会话标题旁是连接状态，右上角是更多操作 -->
@@ -1090,13 +1087,6 @@ onUnmounted(() => {
             {{ t('common.pin') }}
           </a-tag>
           <div class="text-base text-gray-900 font-bold truncate">{{ title }}</div>
-          <span
-            v-if="showAgentTypeTag"
-            class="flex-shrink-0 rounded px-1.5 py-0.5 text-xs font-medium leading-none"
-            :style="{ backgroundColor: agentTheme.tagBg, color: agentTheme.tagColor }"
-          >
-            {{ agentTypeLabel }}
-          </span>
           <a-tag v-if="agent.status === 1" color="green" size="small" class="flex-shrink-0">
             {{ t('common.online') }}
           </a-tag>
