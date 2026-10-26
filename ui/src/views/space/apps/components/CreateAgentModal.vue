@@ -4,7 +4,6 @@ import { Message, type FileItem, type RequestOption, type ValidatedError } from 
 import { useCreateAgent, useUpdateAgent } from '@/hooks/use-agent'
 import { useUploadImage } from '@/hooks/use-upload-file'
 import type { Agent, CreateAgentRequest, UpdateAgentRequest } from '@/models/agent'
-import { generateAgentId } from '@/services/agent'
 import { t } from '@/locales'
 
 // 1.定义自定义组件所需数据
@@ -19,15 +18,11 @@ const props = defineProps({
 const emits = defineEmits(['update:visible'])
 const buildForm = () => ({
   name: '',
-  bot_id: '',
-  peer_id: '',
   avatar: '',
   agent_info: '',
 })
 const form = ref(buildForm())
 const avatarFileList = ref<FileItem[]>([])
-const generatingBotId = ref(false)
-const generatingPeerId = ref(false)
 const { loading: createAgentLoading, handleCreateAgent } = useCreateAgent()
 const { loading: updateAgentLoading, handleUpdateAgent } = useUpdateAgent()
 const { loading: uploadImageLoading, image_url, handleUploadImage } = useUploadImage()
@@ -35,6 +30,8 @@ const isEdit = computed(() => Boolean(props.agent?.id))
 const submitLoading = computed(() => createAgentLoading.value || updateAgentLoading.value)
 const gatewayKey = computed(() => props.agent?.gateway_key || '')
 const gatewayUrl = computed(() => props.agent?.gateway_url || '')
+const botId = computed(() => props.agent?.bot_id || '')
+const peerId = computed(() => props.agent?.peer_id || '')
 const agentTypeLabel = computed(() => {
   const value = props.agent?.agent_type?.trim() ?? ''
   if (!value) {
@@ -82,8 +79,6 @@ const stableStringify = (value: unknown): string => {
 const fillEditForm = (current: Agent) => {
   form.value = {
     name: current.name ?? '',
-    bot_id: current.bot_id ?? '',
-    peer_id: current.peer_id ?? '',
     avatar: current.avatar ?? '',
     agent_info: formatAgentInfoText(current.agent_info),
   }
@@ -99,24 +94,7 @@ const fillEditForm = (current: Agent) => {
     : []
 }
 
-// 6.调用生成标识接口，把 bot_id 或 peer_id 填进对应输入框
-const fillGeneratedId = async (type: 'bot_id' | 'peer_id') => {
-  const loading = type === 'bot_id' ? generatingBotId : generatingPeerId
-  if (loading.value) {
-    return
-  }
-  try {
-    loading.value = true
-    const resp = await generateAgentId({ type })
-    form.value[type] = resp.data[type] ?? ''
-  } catch {
-    // 错误文案已由全局拦截器 Message.error 展示
-  } finally {
-    loading.value = false
-  }
-}
-
-// 7.选择本地图片后走现有上传接口，成功后把 image_url 写入头像地址
+// 6.选择本地图片后走现有上传接口，成功后把 image_url 写入头像地址
 const uploadAvatar = (option: RequestOption) => {
   let aborted = false
   const uploadTask = async () => {
@@ -152,7 +130,7 @@ const uploadAvatar = (option: RequestOption) => {
   }
 }
 
-// 8.移除图片或上传未完成时，把头像地址清空
+// 7.移除图片或上传未完成时，把头像地址清空
 const onAvatarChange = (fileList: FileItem[]) => {
   const kept = fileList.some((item) => item.status === 'done' || item.status === 'uploading')
   if (!kept) {
@@ -160,7 +138,7 @@ const onAvatarChange = (fileList: FileItem[]) => {
   }
 }
 
-// 9.解析 agent_info 文本：空字符串表示不提交；非法 JSON 或非对象则提示并中止
+// 8.解析 agent_info 文本：空字符串表示不提交；非法 JSON 或非对象则提示并中止
 const readAgentInfoInput = (text: string): Record<string, any> | undefined | null => {
   const trimmed = text.trim()
   if (!trimmed) {
@@ -179,7 +157,7 @@ const readAgentInfoInput = (text: string): Record<string, any> | undefined | nul
   }
 }
 
-// 10.编辑时只收集 name、avatar、agent_info 里相对当前智能体有变化的字段
+// 9.编辑时只收集 name、avatar、agent_info 里相对当前智能体有变化的字段
 const buildUpdateRequest = (current: Agent): UpdateAgentRequest | null => {
   const agentInfo = readAgentInfoInput(form.value.agent_info)
   if (agentInfo === null) {
@@ -207,7 +185,7 @@ const buildUpdateRequest = (current: Agent): UpdateAgentRequest | null => {
   return req
 }
 
-// 11.定义表单提交函数
+// 10.定义表单提交函数
 const saveAgent = async ({ errors }: { errors: Record<string, ValidatedError> | undefined }) => {
   if (errors) return
 
@@ -226,8 +204,6 @@ const saveAgent = async ({ errors }: { errors: Record<string, ValidatedError> | 
 
   const req: CreateAgentRequest = {
     name: form.value.name.trim(),
-    bot_id: form.value.bot_id.trim(),
-    peer_id: form.value.peer_id.trim(),
     agent_type: props.agentType,
   }
   const avatar = form.value.avatar.trim()
@@ -240,7 +216,7 @@ const saveAgent = async ({ errors }: { errors: Record<string, ValidatedError> | 
   props.callback && props.callback()
 }
 
-// 12.每次打开模态窗时，编辑回填当前智能体，新建则重置表单（网关由后端自动分配）
+// 11.每次打开模态窗时，编辑回填当前智能体，新建则重置表单（网关由后端自动分配）
 watch(
   () => props.visible,
   (visible) => {
@@ -260,13 +236,15 @@ watch(
 <template>
   <a-modal
     :visible="props.visible"
+    :width="480"
     hide-title
     :footer="false"
+    modal-class="create-agent-modal"
     @update:visible="(value) => emits('update:visible', value)"
   >
     <!-- 顶部标题 -->
     <div class="flex items-center justify-between">
-      <div class="text-lg font-bold text-gray-700">{{ isEdit ? t('agent.edit') : t('agent.create') }}</div>
+      <div class="create-agent-title">{{ isEdit ? t('agent.editTitle') : t('agent.createTitle') }} <span class="create-agent-accent">Hermes</span></div>
       <a-button type="text" class="!text-gray-700" size="small" @click="hideModal">
         <template #icon>
           <icon-close />
@@ -309,48 +287,18 @@ watch(
             :auto-size="{ minRows: 4, maxRows: 8 }"
           />
         </a-form-item>
-        <a-form-item
-          field="bot_id"
-          :label="t('agent.businessId')"
-          :rules="isEdit ? [] : [{ required: true, message: t('agent.businessIdRequired') }]"
-        >
-          <div class="flex w-full items-center gap-2">
-            <a-input
-              v-model="form.bot_id"
-              :disabled="isEdit"
-              :placeholder="t('agent.botIdPlaceholder')"
-              class="flex-1"
-            />
-            <a-button
-              v-if="!isEdit"
-              html-type="button"
-              :loading="generatingBotId"
-              @click="fillGeneratedId('bot_id')"
-            >
-              {{ t('common.generate') }}
-            </a-button>
+        <a-form-item v-if="isEdit" label="bot_id">
+          <div class="flex w-full min-w-0 items-center gap-1 min-h-[32px]">
+            <div class="break-all text-gray-700" :title="botId || '-'">
+              {{ botId || '-' }}
+            </div>
           </div>
         </a-form-item>
-        <a-form-item
-          field="peer_id"
-          :label="t('agent.peerId')"
-          :rules="isEdit ? [] : [{ required: true, message: t('agent.peerIdRequired') }]"
-        >
-          <div class="flex w-full items-center gap-2">
-            <a-input
-              v-model="form.peer_id"
-              :disabled="isEdit"
-              :placeholder="t('agent.peerIdPlaceholder')"
-              class="flex-1"
-            />
-            <a-button
-              v-if="!isEdit"
-              html-type="button"
-              :loading="generatingPeerId"
-              @click="fillGeneratedId('peer_id')"
-            >
-              {{ t('common.generate') }}
-            </a-button>
+        <a-form-item v-if="isEdit" label="peer_id">
+          <div class="flex w-full min-w-0 items-center gap-1 min-h-[32px]">
+            <div class="break-all text-gray-700" :title="peerId || '-'">
+              {{ peerId || '-' }}
+            </div>
           </div>
         </a-form-item>
         <a-form-item v-if="!isEdit">
@@ -370,14 +318,17 @@ watch(
             </div>
           </div>
         </a-form-item>
-        <!-- 底部按钮 -->
-        <div class="flex items-center justify-end">
-          <a-space :size="16">
-            <a-button class="rounded-lg" @click="hideModal">{{ t('common.cancel') }}</a-button>
-            <a-button :loading="submitLoading" type="primary" html-type="submit" class="rounded-lg">
-              {{ t('common.save') }}
-            </a-button>
-          </a-space>
+        <!-- 底部按钮：带上分隔线，视觉对齐「配对 Hermes」弹窗 footer -->
+        <div class="create-agent-footer">
+          <a-button class="create-agent-cancel" @click="hideModal">{{ t('common.cancel') }}</a-button>
+          <a-button
+            :loading="submitLoading"
+            type="primary"
+            html-type="submit"
+            class="create-agent-footer-btn"
+          >
+            {{ t('common.save') }}
+          </a-button>
         </div>
       </a-form>
     </div>
@@ -385,6 +336,33 @@ watch(
 </template>
 
 <style scoped>
+:deep(.arco-modal) {
+  border-radius: 22px;
+  overflow: hidden;
+}
+.create-agent-title {
+  font-size: 23px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: #1d2129;
+  letter-spacing: 0.4px;
+}
+.create-agent-accent {
+  color: #165dff;
+}
+.create-agent-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+  margin: 8px -20px -20px;
+  padding: 14px 20px;
+  border-top: 1px solid #e5e6eb;
+}
+.create-agent-cancel,
+.create-agent-footer-btn {
+  border-radius: 10px;
+}
 .avatar-form-item :deep(.arco-form-item-content-wrapper),
 .avatar-form-item :deep(.arco-form-item-content-flex),
 .avatar-form-item :deep(.arco-upload-wrapper) {

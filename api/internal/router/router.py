@@ -109,11 +109,6 @@ class Router:
             methods=["POST"],
             view_func=self.agent_handler.update_online_status,
         )
-        bp.add_url_rule(
-            "/agent/generate-id",
-            methods=["GET"],
-            view_func=self.agent_handler.generate_agent_id,
-        )
 
         # 7.会话模块
         bp.add_url_rule(

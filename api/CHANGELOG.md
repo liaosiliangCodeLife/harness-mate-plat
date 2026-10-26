@@ -2,6 +2,12 @@
 
 > 约定：每次提交前，先在本文件顶部新增一条 `## <版本号> — <YYYY-MM-DD HH:MM>`，列出这次提交里本模块的改动。版本号是平台级的（取 `ui/package.json` 的 `version`，页面上展示的 Version 同源），每次提交 +1；改动落在哪个模块，就写进哪个模块的记录。
 
+## 0.3.3 — 2026-10-26 23:38
+- 调整：创建智能体时 `bot_id` / `peer_id` 改为可选；为空则由 `generate_agent_identifier` 自动生成，有值仍沿用（向后兼容）
+- 新增：自动生成标识时查库防 `uk_agent_bot_id` / `uk_agent_peer_id` 冲突（含软删除记录），最多重试 5 次，仍冲突抛「智能体标识生成失败，请重试」
+- 移除：下线 `GET /agent/generate-id` 及 `GenerateAgentIdReq` / `AgentHandler.generate_agent_id`
+
+
 ## 0.3.2 — 2026-10-26 23:23
 - 新增：新建智能体时自动创建专属 `server` 网关记录 —— `gateway_url` 取自新增配置项 `WS_GATEWAY_URL`（默认 `wss://ws-agent.alltman.com:1443/ws`），`gateway_key` 由 `internal/lib/gateway_key.py::generate_gateway_key()` 随机生成（32 位 base62，大小写字母+数字）
 - 调整：`create_agent` 忽略入参 `gateway_id`，改为先建专属网关再建智能体，一个智能体对应一条网关记录，不再复用共享网关

@@ -2,6 +2,11 @@
 
 > 约定：每次提交前，先在本文件顶部新增一条 `## <版本号> — <YYYY-MM-DD HH:MM>`，列出这次提交里本模块的改动。版本号是平台级的（取 `ui/package.json` 的 `version`），每次提交 +1；改动落在哪个模块，就写进哪个模块的记录。**插件自身的发布版本号另见 `plugin/plugin.yaml` 的 `version`**（对 GitHub Release 用的那个），两份不要混。
 
+## 0.3.6 — 2026-10-27 00:05
+- 修复：DSH 插件上传文件时只传 `session_id`、没传必填的 `thread_id`，线上报「thread_id 不能为空」，手机端收不到文件
+- 调整：`uploadToGateway` 改为传 `thread_id`（与 Hermes 插件 0.6.1 对齐）；新增 `resolveThreadId()` 兜底（入参 → `ownedAgents` 同 peer 的 threadId → `replyTargets` 反查），对齐 Hermes 插件 0.6.2 的出站兜底策略
+- 发布版本：DSH 插件 `0.2.0` → `0.2.1`
+
 ## 0.6.2 — 2026-10-26 17:05
 - 修复：主动出站（cron 推送、非回复触发）时 `_resolve_target()` 取不到 `thread_id`（只读 `metadata["thread_id"]`），导致上传接口报「thread_id 不能为空」，图片/文件发不出去
 - 调整：`thread_id` 兜底顺序改为 `metadata.thread_id` → `metadata.session_id` → 该账号最近一次收消息的 `thread_id`（新增 `_last_thread_by_chat`）→ 从 `_reply_targets` 反查

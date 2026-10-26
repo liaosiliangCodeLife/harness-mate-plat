@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { Message, type ValidatedError } from '@arco-design/web-vue'
+import { type ValidatedError } from '@arco-design/web-vue'
 import { useCreateAgentConversation } from '@/hooks/use-agent'
 import type { CreateAgentConversationRequest } from '@/models/agent-conversation'
-import { generateAgentId } from '@/services/agent'
 import { t } from '@/locales'
 
 // 1.定义自定义组件所需数据
@@ -22,7 +21,7 @@ const hideModal = () => {
   emits('update:visible', false)
 }
 
-// 3.先向生成标识接口取 thread_id，再创建会话；标题为空时不传 title
+// 3.本地生成 thread_id（与后端 td- + 毫秒时间戳一致），再创建会话；标题为空时不传 title
 const saveConversation = async ({
   errors,
 }: {
@@ -32,14 +31,7 @@ const saveConversation = async ({
 
   try {
     saving.value = true
-    const generated = await generateAgentId({ type: 'thread_id' })
-    const threadId = generated.data.thread_id
-    if (!threadId) {
-      Message.error(t('conversation.missingThread'))
-      return
-    }
-
-    const req: CreateAgentConversationRequest = { thread_id: threadId }
+    const req: CreateAgentConversationRequest = { thread_id: `td-${Date.now()}` }
     const title = form.value.title.trim()
     if (title) {
       req.title = title

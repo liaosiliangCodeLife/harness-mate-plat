@@ -2,6 +2,23 @@
 
 > 约定：每次提交前，先在本文件顶部新增一条 `## <版本号> — <YYYY-MM-DD HH:MM>`，列出这次提交里本模块的改动。版本号是平台级的（取本模块 `package.json` 的 `version`，页面上展示的 Version 与它同源），每次提交 +1；改动落在哪个模块，就写进哪个模块的记录。
 
+## 0.3.5 — 2026-10-26 23:57
+- 调整：创建/编辑智能体弹窗标题改分色 —— 「创建」黑色 + 「Hermes」蓝色 `#165dff`，字号 23px/700，与「配对 Hermes」弹窗一致
+- 调整：弹窗底部改为带上分隔线的 footer 区，取消/保存按钮统一 10px 圆角，视觉对齐「配对 Hermes」弹窗
+- 新增：locales `agent.createTitle` / `agent.editTitle`（中英文）
+
+## 0.3.4 — 2026-10-26 23:49
+- 调整：创建智能体弹窗改为圆润风格 —— 弹窗圆角 22px、宽度 480，与「连接 Hermes」弹窗一致
+- 调整：弹窗标题字号 23px / 字重 700 / 颜色改为蓝色 `#165dff`；底部按钮圆角 10px
+
+## 0.3.3 — 2026-10-26 23:38
+- 调整：新建智能体弹窗不再暴露 bot_id / peer_id，表单只保留头像上传 + 名称；创建请求不再携带这两个字段，改由后端自动生成
+- 调整：编辑模式 bot_id / peer_id 改为纯文本只读展示（与 agent_type / secret 同风格）
+- 移除：`generateAgentId` 服务方法及配套类型；下线前端对 `GET /agent/generate-id` 的调用
+- 调整：新建会话的 `thread_id` 改为前端本地生成（`td-` + 毫秒时间戳），不再依赖已下线的生成标识接口
+- 移除：locales `agent.businessId` / `businessIdRequired` / `peerId` / `peerIdRequired` / `botIdPlaceholder` / `peerIdPlaceholder` 与 `common.generate`
+
+
 ## 0.3.2 — 2026-10-26 23:23
 - 调整：新建智能体弹窗不再拉取共享网关 —— 创建模式改为提示「创建后自动分配专属网关与密钥」，编辑模式仍展示该智能体自己的 `gateway_url` / `gateway_key`
 - 新增：locales `agent.gatewayAutoAssigned`（中英文）

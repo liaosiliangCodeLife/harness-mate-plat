@@ -11,11 +11,9 @@ from flask import request
 from flask_login import login_required, current_user
 from injector import inject
 
-from internal.lib.identifier import generate_agent_identifier
 from internal.schema.agent_schema import (
     CreateAgentReq,
     CreateAgentResp,
-    GenerateAgentIdReq,
     GetAgentResp,
     GetAgentsWithPageReq,
     GetAgentsWithPageResp,
@@ -147,20 +145,3 @@ class AgentHandler:
             req.status.data,
         )
         return success_json({"status": agent.status})
-
-    @login_required
-    def generate_agent_id(self):
-        """按类型生成当前登录账号下的智能体标识"""
-        # 1.提取查询参数并校验
-        req = GenerateAgentIdReq(request.args)
-        if not req.validate():
-            return validate_error_json(req.errors)
-
-        # 2.用当前账号与可选智能体 id 生成标识
-        id_type = req.type.data
-        value = generate_agent_identifier(
-            account_id=str(current_user.id),
-            agent_id=req.agent_id.data or "",
-            id_type=id_type,
-        )
-        return success_json({id_type: value})

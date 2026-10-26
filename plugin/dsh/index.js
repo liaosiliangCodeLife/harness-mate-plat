@@ -75,7 +75,7 @@ const RECONNECT_MIN = 1000;
 const RECONNECT_MAX = 30000;
 
 // ── 文件传输（协议 §5.3 入站 / §6.3 出站）──
-// 出站：本地文件先 POST 上传到网关 open-api（multipart: bot_id/bot_key/session_id/file），
+// 出站：本地文件先 POST 上传到网关 open-api（multipart: bot_id/bot_key/thread_id/file），
 //       再把返回的可访问 url + file_name + media_type 作为 reply 发出，手机端即可下载/预览。
 // 入站：消息可能带 url（协议字段）或文本里的文件链接（App 会把文件拼成 markdown 链接），
 //       下载到本地后把路径告诉 agent（agent 用 read/read_image 等工具处理）。
@@ -307,7 +307,9 @@ export function apply(ctx, config) {
   }
 
   /** 上传本地文件到网关 open-api（免授权接口，协议 §6.3），返回可访问 url */
-  async function uploadToGateway(filePath, peer) {
+  async function uploadToGateway(filePath, threadId) {
+    const tid = String(threadId ?? '').trim();
+    if (!tid) throw new Error('thread_id 不能为空');
     const name = cleanLocalName(filePath);
     const ext = fileExtOf(name);
     if (!UPLOAD_ALLOWED_EXT.has(ext)) throw new Error(`扩展名 .${ext || '(无)'} 不在网关允许列表`);
@@ -318,7 +320,7 @@ export function apply(ctx, config) {
     const form = new FormData();
     form.append('bot_id', String(CFG.botId ?? ''));
     form.append('bot_key', String(CFG.botKey ?? ''));
-    form.append('session_id', String(peer ?? ''));       // 协议：上传 session_id 用当前对端 ws_session_id
+    form.append('thread_id', tid);                      // 平台用 Conversation.thread_id 定位会话（必填）
     form.append('file', new Blob([buf]), name);
     const res = await fetch(CFG.uploadUrl ?? DEFAULT_UPLOAD_URL, {
       method: 'POST',
@@ -332,6 +334,43 @@ export function apply(ctx, config) {
     const url = parsed?.data?.url;
     if (!url) throw new Error('上传成功但未返回 url');
     return url;
+  }
+
+  /** ws_session_id(peer) → 该 peer 最近的业务身份，用于回信路由（§7.1） */
+  const replyTargets = new Map();   // `${accountId}:${threadId}` → peerSession
+  const peerByDevice = new Map();   // from_device → peerSession
+  let lastPeer = '';
+
+  /** 去重（§9.2：重复 msg_id 忽略） */
+  const seen = new Set();
+
+  /** agent → 当前这一轮的回复上下文 */
+  const ownedAgents = new Map();    // agent → { peerSession, accountId, threadId, messageId, mux }
+  /** approvalId → resolver */
+  const approvals = new Map();
+  let approvalSeq = 1;
+
+  /**
+   * 解析上传所需的 thread_id（对齐 Hermes 0.6.2 出站兜底）：
+   *   入参 threadId → ownedAgents 同 peer 的 threadId → replyTargets 反查。
+   */
+  function resolveThreadId(peer, threadId) {
+    const direct = String(threadId ?? '').trim();
+    if (direct) return direct;
+    for (const value of ownedAgents.values()) {
+      if (value?.peerSession === peer) {
+        const tid = String(value.threadId ?? '').trim();
+        if (tid) return tid;
+      }
+    }
+    for (const [key, value] of replyTargets.entries()) {
+      if (value !== peer) continue;
+      const i = key.indexOf(':');
+      if (i < 0) continue;
+      const tid = key.slice(i + 1).trim();
+      if (tid) return tid;
+    }
+    return '';
   }
 
   /**
@@ -381,7 +420,9 @@ export function apply(ctx, config) {
           const st = statSync(abs, { throwIfNoEntry: false });
           if (!st?.isFile()) continue;
           if (!meta.explicit && st.mtimeMs < roundStartMs - 1000) continue;   // 兜底通道只发本轮新文件
-          const url = await uploadToGateway(abs, peer);
+          const tid = resolveThreadId(peer, threadId);
+          if (!tid) { warn(`发送文件失败 ${abs}: 拿不到 thread_id`); continue; }
+          const url = await uploadToGateway(abs, tid);
           const name = cleanLocalName(abs);
           sendReply(peer, threadId, {
             text: meta.description || '',
@@ -403,20 +444,6 @@ export function apply(ctx, config) {
       trace('deliverRoundFiles 异常: ' + (e?.message ?? e));
     }
   }
-
-  /** ws_session_id(peer) → 该 peer 最近的业务身份，用于回信路由（§7.1） */
-  const replyTargets = new Map();   // `${accountId}:${threadId}` → peerSession
-  const peerByDevice = new Map();   // from_device → peerSession
-  let lastPeer = '';
-
-  /** 去重（§9.2：重复 msg_id 忽略） */
-  const seen = new Set();
-
-  /** agent → 当前这一轮的回复上下文 */
-  const ownedAgents = new Map();    // agent → { peerSession, accountId, threadId, messageId, mux }
-  /** approvalId → resolver */
-  const approvals = new Map();
-  let approvalSeq = 1;
 
   /**
    * 等待用户回答的 agent 提问（ask_user_question）：

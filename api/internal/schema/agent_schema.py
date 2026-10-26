@@ -67,16 +67,16 @@ class IsUuid:
 
 
 class IsAgentIdType:
-    """校验标识类型只能是 peer_id、bot_id、ws_session_id、thread_id"""
+    """校验标识类型只能是 peer_id、bot_id、thread_id"""
 
     def __call__(self, form, field):
         """类型不在允许范围内时返回参数错误"""
-        allowed = ("peer_id", "bot_id", "ws_session_id", "thread_id")
+        allowed = ("peer_id", "bot_id", "thread_id")
         if not field.raw_data:
             return
         if field.data in allowed:
             return
-        raise ValidationError("标识类型只能是peer_id、bot_id、ws_session_id、thread_id")
+        raise ValidationError("标识类型只能是peer_id、bot_id、thread_id")
 
 
 AGENT_TYPES = ("HERMES", "DEEPSEEK_HARNESS", "OTHER")
@@ -245,14 +245,14 @@ class CreateAgentReq(FlaskForm):
     """创建智能体请求"""
 
     bot_id = StrictStringField("bot_id", validators=[
+        Optional(),
         IsString("智能体业务标识必须是字符串"),
-        DataRequired("智能体业务标识不能为空"),
-        Length(min=1, max=255, message="智能体业务标识长度在1-255位"),
+        Length(max=255, message="智能体业务标识长度不能超过255个字符"),
     ])
     peer_id = StrictStringField("peer_id", validators=[
+        Optional(),
         IsString("对端设备标识必须是字符串"),
-        DataRequired("对端设备标识不能为空"),
-        Length(min=1, max=255, message="对端设备标识长度在1-255位"),
+        Length(max=255, message="对端设备标识长度不能超过255个字符"),
     ])
     name = StrictStringField("name", validators=[
         IsString("智能体名称必须是字符串"),
@@ -357,15 +357,3 @@ class UpdateAgentOnlineStatusReq(FlaskForm):
         IsOnlineStatus(),
     ])
 
-
-class GenerateAgentIdReq(FlaskForm):
-    """生成智能体标识请求"""
-
-    type = StrictStringField("type", validators=[
-        DataRequired("标识类型不能为空"),
-        IsAgentIdType(),
-    ])
-    agent_id = StrictStringField("agent_id", validators=[
-        Optional(),
-        IsUuid("智能体标识格式不正确"),
-    ])

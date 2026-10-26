@@ -2,9 +2,6 @@ import { get, post } from '@/utils/request'
 import type { BaseResponse } from '@/models/base'
 import type {
   CreateAgentRequest,
-  GenerateAgentIdRequest,
-  GenerateAgentIdResponse,
-  GenerateAgentIdType,
   GetAgentResponse,
   GetAgentsWithPageRequest,
   GetAgentsWithPageResponse,
@@ -54,13 +51,6 @@ export const updateAgentOnlineStatus = (agent_id: string, status: 0 | 1) => {
 // 获取指定智能体详情
 export const getAgent = (agent_id: string) => {
   return get<GetAgentResponse>(`/agents/${agent_id}`)
-}
-
-// 按 type 生成智能体标识，data 的键名与 type 一致
-export const generateAgentId = <T extends GenerateAgentIdType>(
-  req: Omit<GenerateAgentIdRequest, 'type'> & { type: T },
-) => {
-  return get<GenerateAgentIdResponse<T>>(`/agent/generate-id`, { params: req })
 }
 
 // 在指定智能体下创建会话。thread_id 必填，标题为空时不要带 title

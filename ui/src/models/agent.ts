@@ -32,14 +32,15 @@ export type GetAgentsWithPageResponse = BasePaginatorResponse<Agent>
 // 获取智能体详情响应
 export type GetAgentResponse = BaseResponse<Agent>
 
-// 创建智能体请求
+// 创建智能体请求；bot_id / peer_id 可选，缺省由后端自动生成
 export type CreateAgentRequest = {
   name: string
-  bot_id: string
-  peer_id: string
+  bot_id?: string
+  peer_id?: string
   avatar?: string
   gateway_id?: string
   agent_type?: string
+  agent_info?: Record<string, any>
 }
 
 // 更新智能体请求，仅包含本次发生变化的字段
@@ -48,16 +49,3 @@ export type UpdateAgentRequest = {
   avatar?: string
   agent_info?: Record<string, any>
 }
-
-// 可生成的智能体标识类型
-export type GenerateAgentIdType = 'peer_id' | 'bot_id' | 'ws_session_id' | 'thread_id'
-
-// 生成智能体标识请求
-export type GenerateAgentIdRequest = {
-  type: GenerateAgentIdType
-  agent_id?: string
-}
-
-// 生成智能体标识响应，data 的键名与请求的 type 一致
-export type GenerateAgentIdResponse<T extends GenerateAgentIdType = GenerateAgentIdType> =
-  BaseResponse<Record<T, string>>

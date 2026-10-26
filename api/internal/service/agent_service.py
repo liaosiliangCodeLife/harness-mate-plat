@@ -19,6 +19,7 @@ from config import Config
 from internal.exception import FailException, NotFoundException
 from internal.lib.gateway_key import generate_gateway_key
 from internal.lib.helper import utc_now
+from internal.lib.identifier import generate_agent_identifier
 from internal.model import Agent, Conversation, Message, Server
 from internal.schema.agent_schema import GetAgentsWithPageReq
 from pkg.paginator import Paginator
@@ -32,6 +33,9 @@ _LIVE_LAST_SEEN_AT = "live_last_seen_at"
 
 # 删除智能体后通知 Hub 断开上游连接的超时秒数
 _HUB_DISCONNECT_TIMEOUT_SECONDS = 2
+
+# 自动生成 bot_id / peer_id 时，查库防唯一索引冲突的最大尝试次数
+_AGENT_ID_GENERATE_MAX_ATTEMPTS = 5
 
 
 @inject
@@ -89,8 +93,8 @@ class AgentService(BaseService):
     def create_agent(
             self,
             account_id: UUID,
-            bot_id: str,
-            peer_id: str,
+            bot_id: str | None,
+            peer_id: str | None,
             name: str,
             avatar: str,
             agent_info: dict,
@@ -99,17 +103,34 @@ class AgentService(BaseService):
     ) -> Agent:
         """在当前账号下创建智能体，bot_id 全局唯一（含已软删除记录）。
 
+        bot_id / peer_id 为空时由后端自动生成；有值则沿用（向后兼容）。
         先创建一条专属 Server 网关记录，再把其 id 写入新智能体。
         gateway_id 入参已废弃，保留签名以免调用方报错，实际忽略。
         """
         # 入参已废弃，每个智能体自动分配专属网关，不再复用调用方传入的 gateway_id
         _ = gateway_id
 
-        existed = self.db.session.query(Agent.id).filter(
-            Agent.bot_id == bot_id,
-        ).first()
-        if existed:
-            raise FailException("该智能体业务标识已存在")
+        resolved_bot_id = (bot_id or "").strip()
+        if not resolved_bot_id:
+            resolved_bot_id = self._generate_unique_agent_identifier(
+                account_id=account_id,
+                id_type="bot_id",
+                column=Agent.bot_id,
+            )
+        else:
+            existed = self.db.session.query(Agent.id).filter(
+                Agent.bot_id == resolved_bot_id,
+            ).first()
+            if existed:
+                raise FailException("该智能体业务标识已存在")
+
+        resolved_peer_id = (peer_id or "").strip()
+        if not resolved_peer_id:
+            resolved_peer_id = self._generate_unique_agent_identifier(
+                account_id=account_id,
+                id_type="peer_id",
+                column=Agent.peer_id,
+            )
 
         # 先落库专属网关，再创建智能体；任一步失败抛出原有异常，不静默吞掉
         server = self.create(
@@ -122,8 +143,8 @@ class AgentService(BaseService):
             return self.create(
                 Agent,
                 account_id=account_id,
-                peer_id=peer_id,
-                bot_id=bot_id,
+                peer_id=resolved_peer_id,
+                bot_id=resolved_bot_id,
                 name=name,
                 avatar=avatar or "",
                 agent_type=(agent_type or "HERMES").upper(),
@@ -152,6 +173,34 @@ class AgentService(BaseService):
                     exc_info=True,
                 )
             raise
+
+    def _generate_unique_agent_identifier(
+            self,
+            account_id: UUID,
+            id_type: str,
+            column,
+    ) -> str:
+        """
+        * @Author Leon-liao
+        * @Function: _generate_unique_agent_identifier(account_id, id_type, column)
+        * @Description //生成未被占用的 bot_id 或 peer_id；查库含软删除记录，最多尝试 5 次
+        * @Date :2026/10/26 23:38:00
+        * @Param: account_id: 当前账号 UUID；id_type: bot_id 或 peer_id；column: Agent 上对应唯一列
+        * @return：可用的标识字符串；5 次仍冲突则抛 FailException
+        """
+        for _ in range(_AGENT_ID_GENERATE_MAX_ATTEMPTS):
+            candidate = generate_agent_identifier(
+                account_id=str(account_id),
+                agent_id="",
+                id_type=id_type,
+            )
+            # 唯一索引含软删除行，查询不要带 deleted_at 过滤
+            existed = self.db.session.query(Agent.id).filter(
+                column == candidate,
+            ).first()
+            if not existed:
+                return candidate
+        raise FailException("智能体标识生成失败，请重试")
 
     def update_agent(self, agent_id: str, account_id: UUID, update_data: dict) -> Agent:
         """增量更新智能体；本次提交的 agent_info 整体替换为最终值，未提交则保持原值"""
