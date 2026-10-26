@@ -71,4 +71,6 @@ export type ChatMessage = {
   // 来自历史接口。重进会话时这些消息已经结束，即使 status 为 0 也不再显示「生成中…」
   fromHistory?: boolean
   files?: ChatFile[]
+  // 消息创建时间，秒级时间戳。气泡左侧显示 HH:mm
+  createdAt?: number
 }

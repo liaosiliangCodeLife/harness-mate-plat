@@ -2,14 +2,17 @@
 import { computed, provide, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useGetAgent } from '@/hooks/use-agent'
+import AgentPoster from '@/views/space/apps/components/AgentPoster.vue'
 import CreateConversationModal from '@/views/space/apps/components/CreateConversationModal.vue'
 import { getAgent } from '@/services/agent'
 import {
   conversationListVersionKey,
   detailAgentKey,
+  hasConversationsKey,
   reloadDetailAgentKey,
 } from '@/views/space/apps/detail-agent'
 import { t, translateAgentInfoKey } from '@/locales'
+import { agentTypeTheme } from '@/utils/agent-theme'
 
 const route = useRoute()
 const { loading, agent, loadAgent } = useGetAgent()
@@ -17,7 +20,7 @@ const agentId = computed(() => String(route.params?.agent_id ?? ''))
 const createConversationVisible = ref(false)
 const conversationListVersion = ref(0)
 const isConversationList = computed(() => route.name === 'space-apps-detail')
-const pageBg = computed(() => '#FFFFFF')
+const hasConversations = ref(false)
 const posterAgent = computed(() => {
   const current = agent.value
   if (!current || current.id !== agentId.value) {
@@ -25,29 +28,16 @@ const posterAgent = computed(() => {
   }
   return current
 })
-const posterTitle = computed(() => {
-  const agentType = posterAgent.value?.agent_type ?? ''
-  if (agentType === 'HERMES') {
-    return '@HERMES AGENT'
+const pageBg = computed(() => {
+  if (!hasConversations.value || !posterAgent.value) {
+    return '#FFFFFF'
   }
-  if (agentType === 'DEEPSEEK_HARNESS') {
-    return '@DEEPSEEK AGENT'
-  }
-  return `@${agentType}`
-})
-const posterSubtitle = computed(() => {
-  const agentType = posterAgent.value?.agent_type ?? ''
-  if (agentType === 'HERMES') {
-    return '提个问题、贴出错误，或指向仓库。我能读代码、运行工具，帮你完成交付。'
-  }
-  if (agentType === 'DEEPSEEK_HARNESS') {
-    return '提出需求、贴出报错，或描述目标。我会拆解步骤、编写代码、运行工具，帮你完成任务。'
-  }
-  return ''
+  return agentTypeTheme(posterAgent.value.agent_type).bg
 })
 
 provide(detailAgentKey, agent)
 provide(conversationListVersionKey, conversationListVersion)
+provide(hasConversationsKey, hasConversations)
 
 let reloadTimer: number | undefined
 provide(reloadDetailAgentKey, () => {
@@ -110,6 +100,7 @@ const agentInfoRows = computed(() => {
 watch(
   agentId,
   (id) => {
+    hasConversations.value = false
     if (id) {
       loadAgent(id)
     }
@@ -123,10 +114,11 @@ watch(
     class="min-h-screen flex flex-col h-full overflow-hidden"
     :style="{ backgroundColor: pageBg }"
   >
-    <div v-if="posterAgent" class="detail-poster-bg">
-      <div class="detail-poster-word">{{ posterTitle }}</div>
-      <div v-if="posterSubtitle" class="detail-poster-note">{{ posterSubtitle }}</div>
-    </div>
+    <agent-poster
+      v-if="posterAgent && !hasConversations"
+      :agent-type="posterAgent.agent_type"
+      class="detail-poster-bg"
+    />
     <!-- 顶部智能体信息 -->
     <div class="relative z-[1] flex-shrink-0 bg-white px-4 py-3 flex items-center gap-3 border-b">
       <router-link :to="{ name: 'space-apps-list' }">
@@ -207,34 +199,7 @@ watch(
   position: fixed;
   inset: 0;
   z-index: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 18px;
-  padding: 0 40px;
   overflow: hidden;
-  text-align: center;
   pointer-events: none;
-}
-
-.detail-poster-word {
-  max-width: 100%;
-  color: #1b4df5;
-  font-family: 'Didot', 'Bodoni MT', 'Playfair Display', 'Times New Roman', Georgia, serif;
-  font-size: clamp(56px, 9vw, 150px);
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  line-height: 0.95;
-  word-break: break-word;
-  text-transform: uppercase;
-  opacity: 0.95;
-}
-
-.detail-poster-note {
-  max-width: 100%;
-  color: #94a3b8;
-  font-size: 15px;
-  line-height: 1.6;
 }
 </style>

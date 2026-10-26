@@ -4,6 +4,9 @@ import type { Agent } from '@/models/agent'
 // 详情页布局与会话卡片共享同一份智能体，网关连接参数与顶部展示一致
 export const detailAgentKey: InjectionKey<Ref<Agent | null>> = Symbol('detailAgent')
 
+// 会话列表是否已有会话：有会话时详情页用浅色底并藏起海报大字
+export const hasConversationsKey: InjectionKey<Ref<boolean>> = Symbol('hasConversations')
+
 // 布局页新建会话成功后递增，会话列表据此按当前搜索词重载第一页
 export const conversationListVersionKey: InjectionKey<Ref<number>> = Symbol(
   'conversationListVersion',

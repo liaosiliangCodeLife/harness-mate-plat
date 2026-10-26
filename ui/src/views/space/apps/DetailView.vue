@@ -6,6 +6,7 @@ import ConversationChatCard from '@/views/space/apps/components/ConversationChat
 import {
   conversationListVersionKey,
   detailAgentKey,
+  hasConversationsKey,
 } from '@/views/space/apps/detail-agent'
 import { t } from '@/locales'
 
@@ -19,6 +20,7 @@ const {
 } = useGetAgentConversations()
 const agent = inject(detailAgentKey, ref(null))
 const conversationListVersion = inject(conversationListVersionKey, ref(0))
+const hasConversations = inject(hasConversationsKey, ref(false))
 
 const agentId = computed(() => String(route.params?.agent_id ?? ''))
 const agentMatched = computed(() => Boolean(agent.value && agent.value.id === agentId.value))
@@ -71,6 +73,15 @@ const refreshConversations = () => {
 watch(conversationListVersion, () => {
   refreshConversations()
 })
+
+// 有会话时通知布局页换成浅色底并藏起海报；清空或换智能体时改回白底海报
+watch(
+  () => conversations.value.length,
+  (length) => {
+    hasConversations.value = length > 0
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
@@ -93,11 +104,6 @@ watch(conversationListVersion, () => {
           @refresh="refreshConversations"
         />
       </div>
-      <a-empty
-        v-if="agentMatched && !getConversationsLoading && conversations.length === 0"
-        :description="t('space.emptyConversations')"
-        class="h-[400px] flex flex-col items-center justify-center"
-      />
       <a-row v-if="paginator.total_page >= 2">
         <a-col
           v-if="paginator.current_page <= paginator.total_page"

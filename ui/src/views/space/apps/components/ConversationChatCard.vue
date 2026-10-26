@@ -33,7 +33,7 @@ import {
 import { updateAgentOnlineStatus } from '@/services/agent'
 import { uploadFile, uploadImage } from '@/services/upload-file'
 import { useAccountStore } from '@/stores/account'
-import { agentTypeTheme } from '@/utils/agent-theme'
+import AgentPoster from '@/views/space/apps/components/AgentPoster.vue'
 import { genUuid } from '@/utils/uuid'
 import { normalizeChatFiles } from '@/utils/chat-files'
 import { reduceHermesReply, stripCursorGlyphs, stripStreamCursor } from '@/utils/hermes-channel'
@@ -218,9 +218,7 @@ const title = computed(() => {
 const cardEmpty = computed(
   () => props.conversation.message_count === 0 && messages.value.length === 0,
 )
-const cardBg = computed(() =>
-  cardEmpty.value ? agentTypeTheme(props.agent.agent_type).bg : '#FFFFFF',
-)
+const cardBg = computed(() => '#FFFFFF')
 const draftAutoSize = computed(() =>
   draftExpanded.value ? { minRows: 6, maxRows: 10 } : { minRows: 1, maxRows: 4 },
 )
@@ -256,6 +254,7 @@ const toChatMessage = (record: AgentMessage): ChatMessage => {
     status: record.message_status,
     fromHistory: true,
     files: normalizeChatFiles(record.message_info?.files),
+    createdAt: record.created_at,
   }
 }
 
@@ -571,7 +570,12 @@ const handleReply = (payload: HermesReplyData) => {
       return item
     })
   }
-  messages.value = nextMessages
+  messages.value = nextMessages.map((item) => {
+    if (item.createdAt) {
+      return item
+    }
+    return { ...item, createdAt: Math.floor(Date.now() / 1000) }
+  })
   thinking.value = nextThinking
   if (!stopRequested) {
     persistHermesReply(payload)
@@ -729,6 +733,7 @@ const send = async () => {
     is_image: item.isImage,
     size: item.size,
   }))
+  const createdAt = Math.floor(Date.now() / 1000)
   acceptReplies = true
   stopRequested = false
   draft.value = ''
@@ -741,6 +746,7 @@ const send = async () => {
       content: text,
       thinking: false,
       files,
+      createdAt,
     },
     {
       id: pendingId,
@@ -748,6 +754,7 @@ const send = async () => {
       content: '',
       thinking: false,
       status: 0,
+      createdAt,
     },
   ]
   void scrollToBottom(true)
@@ -769,6 +776,7 @@ const send = async () => {
         content: t('conversation.sendFailed'),
         thinking: false,
         status: 2,
+        createdAt: Math.floor(Date.now() / 1000),
       },
     ]
     void scrollToBottom(true)
@@ -1136,6 +1144,9 @@ onUnmounted(() => {
     </div>
     <!-- 消息流 -->
     <div class="relative flex-1 min-h-0">
+      <div v-if="cardEmpty" class="pointer-events-none absolute inset-0 z-0">
+        <agent-poster :agent-type="agent.agent_type" :size="isFullscreen ? 'large' : 'small'" />
+      </div>
       <div
         v-if="historyLoading"
         class="absolute inset-0 z-10 flex items-center justify-center bg-white/70"
@@ -1158,11 +1169,6 @@ onUnmounted(() => {
             {{ t('conversation.historyFailed') }}
             <a-button type="text" size="mini" @click="loadHistory">{{ t('common.retry') }}</a-button>
           </div>
-          <a-empty
-            v-else-if="!historyLoading && messages.length === 0 && !thinking"
-            :description="t('conversation.empty')"
-            class="my-8"
-          />
           <chat-bubble
             v-for="item in visibleMessages"
             :key="item.id"

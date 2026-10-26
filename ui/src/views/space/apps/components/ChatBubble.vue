@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, type PropType } from 'vue'
+import moment from 'moment'
 import type { ChatMessage } from '@/models/agent-message'
 import { formatFileSize, splitMessageFiles } from '@/utils/chat-files'
 import { stripCursorGlyphs } from '@/utils/hermes-channel'
@@ -28,10 +29,17 @@ const audioFiles = computed(() => parts.value.files.filter((file) => file.media_
 const videoFiles = computed(() => parts.value.files.filter((file) => file.media_kind === 'video'))
 const otherFiles = computed(() => parts.value.files.filter((file) => file.media_kind === 'file'))
 const html = computed(() => renderMarkdown(parts.value.text))
+const timeText = computed(() => {
+  const createdAt = props.message.createdAt
+  if (!createdAt) {
+    return ''
+  }
+  return moment(createdAt * 1000).format('YYYY-MM-DD HH:mm:ss')
+})
 </script>
 
 <template>
-  <div class="flex gap-2">
+  <div :class="isUser ? 'flex flex-row-reverse gap-2' : 'flex gap-2'">
     <a-avatar
       v-if="avatarUrl"
       :size="30"
@@ -43,8 +51,8 @@ const html = computed(() => renderMarkdown(parts.value.text))
       <icon-user v-if="isUser" />
       <icon-robot v-else />
     </a-avatar>
-    <div class="flex-1 min-w-0 flex flex-col items-start gap-2">
-      <div class="text-[11px] text-gray-700 font-bold">{{ name }}</div>
+    <div :class="isUser ? 'flex-1 min-w-0 flex flex-col items-end gap-2' : 'flex-1 min-w-0 flex flex-col items-start gap-2'">
+      <div :class="isUser ? 'flex w-full items-center justify-end gap-2' : 'flex items-center gap-2'"><span class="text-[11px] text-gray-700 font-bold">{{ name }}</span><span :class="isUser ? 'order-first text-[10px] text-gray-400' : 'text-[10px] text-gray-400'">{{ timeText }}</span></div>
       <div
         :class="`w-fit max-w-full min-w-0 break-words px-3 py-2 rounded-2xl border ${
           isUser
