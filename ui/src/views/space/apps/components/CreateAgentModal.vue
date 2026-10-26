@@ -2,7 +2,6 @@
 import { computed, ref, watch, type PropType } from 'vue'
 import { Message, type FileItem, type RequestOption, type ValidatedError } from '@arco-design/web-vue'
 import { useCreateAgent, useUpdateAgent } from '@/hooks/use-agent'
-import { useGetOpenServer } from '@/hooks/use-server'
 import { useUploadImage } from '@/hooks/use-upload-file'
 import type { Agent, CreateAgentRequest, UpdateAgentRequest } from '@/models/agent'
 import { generateAgentId } from '@/services/agent'
@@ -23,7 +22,6 @@ const buildForm = () => ({
   bot_id: '',
   peer_id: '',
   avatar: '',
-  gateway_id: '',
   agent_info: '',
 })
 const form = ref(buildForm())
@@ -32,23 +30,11 @@ const generatingBotId = ref(false)
 const generatingPeerId = ref(false)
 const { loading: createAgentLoading, handleCreateAgent } = useCreateAgent()
 const { loading: updateAgentLoading, handleUpdateAgent } = useUpdateAgent()
-const { loading: getServerLoading, server, loadOpenServer } = useGetOpenServer()
 const { loading: uploadImageLoading, image_url, handleUploadImage } = useUploadImage()
 const isEdit = computed(() => Boolean(props.agent?.id))
 const submitLoading = computed(() => createAgentLoading.value || updateAgentLoading.value)
-const gatewayKey = computed(() => {
-  if (isEdit.value) {
-    return props.agent?.gateway_key || ''
-  }
-  return server.value?.gateway_key || ''
-})
-const gatewayUrl = computed(() => {
-  if (isEdit.value) {
-    return props.agent?.gateway_url || ''
-  }
-  return server.value?.gateway_url || ''
-})
-const gatewayLoading = computed(() => (isEdit.value ? false : getServerLoading.value))
+const gatewayKey = computed(() => props.agent?.gateway_key || '')
+const gatewayUrl = computed(() => props.agent?.gateway_url || '')
 const agentTypeLabel = computed(() => {
   const value = props.agent?.agent_type?.trim() ?? ''
   if (!value) {
@@ -99,7 +85,6 @@ const fillEditForm = (current: Agent) => {
     bot_id: current.bot_id ?? '',
     peer_id: current.peer_id ?? '',
     avatar: current.avatar ?? '',
-    gateway_id: '',
     agent_info: formatAgentInfoText(current.agent_info),
   }
   avatarFileList.value = current.avatar
@@ -112,22 +97,9 @@ const fillEditForm = (current: Agent) => {
         },
       ]
     : []
-  server.value = null
 }
 
-// 6.拉取免登录网关：只读展示 gateway_key、gateway_url，提交时仍用返回的 id
-const loadCurrentGateway = async () => {
-  try {
-    const current = await loadOpenServer()
-    form.value.gateway_id = current?.id ?? ''
-  } catch {
-    // 账号下没有网关时后端返回 not_found，错误文案已由拦截器提示
-    server.value = null
-    form.value.gateway_id = ''
-  }
-}
-
-// 7.调用生成标识接口，把 bot_id 或 peer_id 填进对应输入框
+// 6.调用生成标识接口，把 bot_id 或 peer_id 填进对应输入框
 const fillGeneratedId = async (type: 'bot_id' | 'peer_id') => {
   const loading = type === 'bot_id' ? generatingBotId : generatingPeerId
   if (loading.value) {
@@ -144,7 +116,7 @@ const fillGeneratedId = async (type: 'bot_id' | 'peer_id') => {
   }
 }
 
-// 8.选择本地图片后走现有上传接口，成功后把 image_url 写入头像地址
+// 7.选择本地图片后走现有上传接口，成功后把 image_url 写入头像地址
 const uploadAvatar = (option: RequestOption) => {
   let aborted = false
   const uploadTask = async () => {
@@ -180,7 +152,7 @@ const uploadAvatar = (option: RequestOption) => {
   }
 }
 
-// 9.移除图片或上传未完成时，把头像地址清空
+// 8.移除图片或上传未完成时，把头像地址清空
 const onAvatarChange = (fileList: FileItem[]) => {
   const kept = fileList.some((item) => item.status === 'done' || item.status === 'uploading')
   if (!kept) {
@@ -188,7 +160,7 @@ const onAvatarChange = (fileList: FileItem[]) => {
   }
 }
 
-// 10.解析 agent_info 文本：空字符串表示不提交；非法 JSON 或非对象则提示并中止
+// 9.解析 agent_info 文本：空字符串表示不提交；非法 JSON 或非对象则提示并中止
 const readAgentInfoInput = (text: string): Record<string, any> | undefined | null => {
   const trimmed = text.trim()
   if (!trimmed) {
@@ -207,7 +179,7 @@ const readAgentInfoInput = (text: string): Record<string, any> | undefined | nul
   }
 }
 
-// 11.编辑时只收集 name、avatar、agent_info 里相对当前智能体有变化的字段
+// 10.编辑时只收集 name、avatar、agent_info 里相对当前智能体有变化的字段
 const buildUpdateRequest = (current: Agent): UpdateAgentRequest | null => {
   const agentInfo = readAgentInfoInput(form.value.agent_info)
   if (agentInfo === null) {
@@ -235,7 +207,7 @@ const buildUpdateRequest = (current: Agent): UpdateAgentRequest | null => {
   return req
 }
 
-// 12.定义表单提交函数
+// 11.定义表单提交函数
 const saveAgent = async ({ errors }: { errors: Record<string, ValidatedError> | undefined }) => {
   if (errors) return
 
@@ -259,12 +231,8 @@ const saveAgent = async ({ errors }: { errors: Record<string, ValidatedError> | 
     agent_type: props.agentType,
   }
   const avatar = form.value.avatar.trim()
-  const gatewayId = `${form.value.gateway_id ?? ''}`.trim()
   if (avatar) {
     req.avatar = avatar
-  }
-  if (gatewayId) {
-    req.gateway_id = gatewayId
   }
 
   await handleCreateAgent(req)
@@ -272,7 +240,7 @@ const saveAgent = async ({ errors }: { errors: Record<string, ValidatedError> | 
   props.callback && props.callback()
 }
 
-// 13.每次打开模态窗时，编辑回填当前智能体，新建则重置并拉取免登录网关
+// 12.每次打开模态窗时，编辑回填当前智能体，新建则重置表单（网关由后端自动分配）
 watch(
   () => props.visible,
   (visible) => {
@@ -285,8 +253,6 @@ watch(
     }
     form.value = buildForm()
     avatarFileList.value = []
-    server.value = null
-    void loadCurrentGateway()
   },
 )
 </script>
@@ -387,22 +353,21 @@ watch(
             </a-button>
           </div>
         </a-form-item>
-        <a-form-item :label="t('agent.secret')">
+        <a-form-item v-if="!isEdit">
+          <div class="text-gray-500">{{ t('agent.gatewayAutoAssigned') }}</div>
+        </a-form-item>
+        <a-form-item v-if="isEdit" :label="t('agent.secret')">
           <div class="flex w-full min-w-0 items-center gap-1 min-h-[32px]">
-            <a-spin :loading="gatewayLoading" class="min-w-0 flex-1">
-              <div class="break-all text-gray-700" :title="gatewayKey || '-'">
-                {{ gatewayLoading ? '' : (gatewayKey || '-') }}
-              </div>
-            </a-spin>
+            <div class="break-all text-gray-700" :title="gatewayKey || '-'">
+              {{ gatewayKey || '-' }}
+            </div>
           </div>
         </a-form-item>
-        <a-form-item :label="t('agent.gatewayUrl')">
+        <a-form-item v-if="isEdit" :label="t('agent.gatewayUrl')">
           <div class="flex w-full min-w-0 items-center gap-1 min-h-[32px]">
-            <a-spin :loading="gatewayLoading" class="min-w-0 flex-1">
-              <div class="break-all text-gray-700" :title="gatewayUrl || '-'">
-                {{ gatewayLoading ? '' : (gatewayUrl || '-') }}
-              </div>
-            </a-spin>
+            <div class="break-all text-gray-700" :title="gatewayUrl || '-'">
+              {{ gatewayUrl || '-' }}
+            </div>
           </div>
         </a-form-item>
         <!-- 底部按钮 -->

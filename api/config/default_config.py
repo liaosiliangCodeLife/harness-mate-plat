@@ -23,4 +23,11 @@ DEFAULT_CONFIG = {
     "REDIS_PASSWORD": "",
     "REDIS_DB": 0,
     "REDIS_USE_SSL": "False",
+
+    # Hub 转发配置
+    "HUB_BASE_URL": "http://hub:8090",
+    "INTERNAL_TOKEN": "",
+
+    # 网关配置：新建智能体时写入专属 Server 记录的 WebSocket 地址
+    "WS_GATEWAY_URL": "wss://ws-agent.alltman.com:1443/ws",
 }

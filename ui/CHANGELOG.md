@@ -2,6 +2,11 @@
 
 > 约定：每次提交前，先在本文件顶部新增一条 `## <版本号> — <YYYY-MM-DD HH:MM>`，列出这次提交里本模块的改动。版本号是平台级的（取本模块 `package.json` 的 `version`，页面上展示的 Version 与它同源），每次提交 +1；改动落在哪个模块，就写进哪个模块的记录。
 
+## 0.3.2 — 2026-10-26 23:23
+- 调整：新建智能体弹窗不再拉取共享网关 —— 创建模式改为提示「创建后自动分配专属网关与密钥」，编辑模式仍展示该智能体自己的 `gateway_url` / `gateway_key`
+- 新增：locales `agent.gatewayAutoAssigned`（中英文）
+
+
 ## 0.3.1 — 2026-10-26 23:02
 - 移除：侧边栏「频道服务」菜单项与 `/server` 路由、页面 `views/server/ListView.vue`
 - 移除：无路由引用的孤儿页面 `views/space/server/ListView.vue`

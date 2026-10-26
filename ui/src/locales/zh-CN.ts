@@ -204,6 +204,7 @@ const zhCN = {
     peerIdPlaceholder: '请输入 peer_id',
     secret: '智能体密钥',
     gatewayUrl: '网关地址',
+    gatewayAutoAssigned: '创建后自动分配专属网关与密钥',
     jsonInvalid: 'agent_info 必须是合法的 JSON 对象',
     noChanges: '没有需要保存的修改',
     sessionCreated: '会话已创建',

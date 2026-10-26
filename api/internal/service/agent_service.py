@@ -17,6 +17,7 @@ from sqlalchemy.orm import joinedload
 
 from config import Config
 from internal.exception import FailException, NotFoundException
+from internal.lib.gateway_key import generate_gateway_key
 from internal.lib.helper import utc_now
 from internal.model import Agent, Conversation, Message, Server
 from internal.schema.agent_schema import GetAgentsWithPageReq
@@ -96,16 +97,26 @@ class AgentService(BaseService):
             gateway_id: str | None,
             agent_type: str = "HERMES",
     ) -> Agent:
-        """在当前账号下创建智能体，bot_id 全局唯一（含已软删除记录）"""
+        """在当前账号下创建智能体，bot_id 全局唯一（含已软删除记录）。
+
+        先创建一条专属 Server 网关记录，再把其 id 写入新智能体。
+        gateway_id 入参已废弃，保留签名以免调用方报错，实际忽略。
+        """
+        # 入参已废弃，每个智能体自动分配专属网关，不再复用调用方传入的 gateway_id
+        _ = gateway_id
+
         existed = self.db.session.query(Agent.id).filter(
             Agent.bot_id == bot_id,
         ).first()
         if existed:
             raise FailException("该智能体业务标识已存在")
 
-        resolved_gateway_id = None
-        if gateway_id:
-            resolved_gateway_id = self._require_owned_gateway(gateway_id)
+        # 先落库专属网关，再创建智能体；任一步失败抛出原有异常，不静默吞掉
+        server = self.create(
+            Server,
+            gateway_url=str(self.config.WS_GATEWAY_URL or ""),
+            gateway_key=generate_gateway_key(),
+        )
 
         try:
             return self.create(
@@ -117,11 +128,29 @@ class AgentService(BaseService):
                 avatar=avatar or "",
                 agent_type=(agent_type or "HERMES").upper(),
                 agent_info=agent_info if isinstance(agent_info, dict) else {},
-                gateway_id=resolved_gateway_id,
+                gateway_id=server.id,
             )
         except IntegrityError as exc:
+            try:
+                self.delete(server)
+            except Exception:
+                logger.warning(
+                    "创建智能体失败后清理专属网关失败，server_id=%s",
+                    getattr(server, "id", None),
+                    exc_info=True,
+                )
             if self._is_bot_id_conflict(exc):
                 raise FailException("该智能体业务标识已存在") from exc
+            raise
+        except Exception:
+            try:
+                self.delete(server)
+            except Exception:
+                logger.warning(
+                    "创建智能体失败后清理专属网关失败，server_id=%s",
+                    getattr(server, "id", None),
+                    exc_info=True,
+                )
             raise
 
     def update_agent(self, agent_id: str, account_id: UUID, update_data: dict) -> Agent:

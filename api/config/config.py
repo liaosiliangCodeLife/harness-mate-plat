@@ -42,3 +42,10 @@ class Config:
         self.REDIS_PASSWORD = _get_env("REDIS_PASSWORD")
         self.REDIS_DB = _get_env("REDIS_DB")
         self.REDIS_USE_SSL = _get_bool_env("REDIS_USE_SSL")
+
+        # Hub 转发配置。API 把聊天消息 POST 到 Hub，服务间用内部令牌
+        self.HUB_BASE_URL = _get_env("HUB_BASE_URL")
+        self.INTERNAL_TOKEN = _get_env("INTERNAL_TOKEN")
+
+        # 网关配置。新建智能体时写入专属 Server 记录的 WebSocket 地址
+        self.WS_GATEWAY_URL = _get_env("WS_GATEWAY_URL")

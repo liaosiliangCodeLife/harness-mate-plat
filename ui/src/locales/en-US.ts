@@ -206,6 +206,7 @@ const enUS = {
     peerIdPlaceholder: 'Enter a peer_id',
     secret: 'Agent secret',
     gatewayUrl: 'Gateway URL',
+    gatewayAutoAssigned: 'A dedicated gateway and secret will be assigned after creation',
     jsonInvalid: 'agent_info must be a valid JSON object',
     noChanges: 'No changes to save',
     sessionCreated: 'Conversation created',

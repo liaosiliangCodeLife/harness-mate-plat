@@ -69,6 +69,7 @@ services:
       SERVER_THREAD_AMOUNT: "${SERVER_THREAD_AMOUNT}"
       GUNICORN_TIMEOUT: "${GUNICORN_TIMEOUT}"
       INTERNAL_TOKEN: "${INTERNAL_TOKEN}"
+      WS_GATEWAY_URL: "${WS_GATEWAY_URL}"
     volumes:
       - ./volumes/app/storage:/app/api/storage
     expose:
