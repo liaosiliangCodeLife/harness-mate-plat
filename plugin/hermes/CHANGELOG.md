@@ -2,6 +2,10 @@
 
 > 约定：每次提交前，先在本文件顶部新增一条 `## <版本号> — <YYYY-MM-DD HH:MM>`，列出这次提交里本模块的改动。版本号是平台级的（取 `ui/package.json` 的 `version`），每次提交 +1；改动落在哪个模块，就写进哪个模块的记录。**插件自身的发布版本号另见 `plugin/plugin.yaml` 的 `version`**（对 GitHub Release 用的那个），两份不要混。
 
+## 0.6.1 — 2026-10-26 11:45
+- 修复：发送本地图片/文件时，上传接口传错参数（把 peer 的 `ws_session_id` 当成了 `thread_id`），线上报「thread_id 对应的会话不存在或不属于该智能体」，图片发不出去；改为传真实会话 `thread_id`（`td-...`）
+- 发布版本：插件 `0.6.0` → `0.6.1`
+
 ## 0.2.0 — 2026-10-26 09:06
 - 调整：上传表单同时带 `session_id` 与 `thread_id`，兼容 Hub 架构（WS 连接下沉到后端后不再有 `ws_session_id`），修复发图片报「session_id 不能为空」
 - 新增：`plugin/README.md`、`plugin/hermes/README.md`、`plugin/dsh/README.md` 三份文档（架构、安装、协议索引）

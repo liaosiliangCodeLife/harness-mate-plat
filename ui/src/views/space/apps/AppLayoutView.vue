@@ -10,7 +10,6 @@ import {
   reloadDetailAgentKey,
 } from '@/views/space/apps/detail-agent'
 import { t, translateAgentInfoKey } from '@/locales'
-import { agentTypeTheme } from '@/utils/agent-theme'
 
 const route = useRoute()
 const { loading, agent, loadAgent } = useGetAgent()
@@ -18,11 +17,33 @@ const agentId = computed(() => String(route.params?.agent_id ?? ''))
 const createConversationVisible = ref(false)
 const conversationListVersion = ref(0)
 const isConversationList = computed(() => route.name === 'space-apps-detail')
-const pageBg = computed(() => {
-  if (!agent.value || agent.value.id !== agentId.value) {
-    return agentTypeTheme().bg
+const pageBg = computed(() => '#FFFFFF')
+const posterAgent = computed(() => {
+  const current = agent.value
+  if (!current || current.id !== agentId.value) {
+    return null
   }
-  return agentTypeTheme(agent.value.agent_type).bg
+  return current
+})
+const posterTitle = computed(() => {
+  const agentType = posterAgent.value?.agent_type ?? ''
+  if (agentType === 'HERMES') {
+    return '@HERMES AGENT'
+  }
+  if (agentType === 'DEEPSEEK_HARNESS') {
+    return '@DEEPSEEK AGENT'
+  }
+  return `@${agentType}`
+})
+const posterSubtitle = computed(() => {
+  const agentType = posterAgent.value?.agent_type ?? ''
+  if (agentType === 'HERMES') {
+    return '提个问题、贴出错误，或指向仓库。我能读代码、运行工具，帮你完成交付。'
+  }
+  if (agentType === 'DEEPSEEK_HARNESS') {
+    return '提出需求、贴出报错，或描述目标。我会拆解步骤、编写代码、运行工具，帮你完成任务。'
+  }
+  return ''
 })
 
 provide(detailAgentKey, agent)
@@ -102,8 +123,12 @@ watch(
     class="min-h-screen flex flex-col h-full overflow-hidden"
     :style="{ backgroundColor: pageBg }"
   >
+    <div v-if="posterAgent" class="detail-poster-bg">
+      <div class="detail-poster-word">{{ posterTitle }}</div>
+      <div v-if="posterSubtitle" class="detail-poster-note">{{ posterSubtitle }}</div>
+    </div>
     <!-- 顶部智能体信息 -->
-    <div class="flex-shrink-0 px-4 py-3 flex items-center gap-3 border-b">
+    <div class="relative z-[1] flex-shrink-0 bg-white px-4 py-3 flex items-center gap-3 border-b">
       <router-link :to="{ name: 'space-apps-list' }">
         <a-button size="mini">
           <template #icon>
@@ -166,7 +191,7 @@ watch(
       </a-button>
     </div>
     <!-- 会话列表 -->
-    <div class="flex-1 min-h-0">
+    <div class="relative z-[1] flex-1 min-h-0">
       <router-view />
     </div>
   </div>
@@ -177,4 +202,39 @@ watch(
   />
 </template>
 
-<style scoped></style>
+<style scoped>
+.detail-poster-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 0 40px;
+  overflow: hidden;
+  text-align: center;
+  pointer-events: none;
+}
+
+.detail-poster-word {
+  max-width: 100%;
+  color: #1b4df5;
+  font-family: 'Didot', 'Bodoni MT', 'Playfair Display', 'Times New Roman', Georgia, serif;
+  font-size: clamp(56px, 9vw, 150px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 0.95;
+  word-break: break-word;
+  text-transform: uppercase;
+  opacity: 0.95;
+}
+
+.detail-poster-note {
+  max-width: 100%;
+  color: #94a3b8;
+  font-size: 15px;
+  line-height: 1.6;
+}
+</style>

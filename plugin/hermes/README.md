@@ -2,7 +2,7 @@
 
 Hermes Agent 的平台适配器：把本机 Hermes 接到 HarnessMate 平台，手机/浏览器即可与它对话。
 
-版本：`0.6.0`（`plugin.yaml`）｜协议：`hermes_channel_protocol.md`
+版本：`0.6.1`（`plugin.yaml`）｜协议：`hermes_channel_protocol.md`
 
 ---
 

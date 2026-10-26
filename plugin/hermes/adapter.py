@@ -911,7 +911,7 @@ class HarnessMateAdapter(BasePlatformAdapter):
         """
         metadata = metadata or {}
         thread_id, to_ws_session = self._resolve_target(chat_id, metadata)
-        session_id = str(metadata.get("session_id") or to_ws_session or "").strip()
+        thread_id = str(thread_id or "").strip()
         if not to_ws_session:
             return SendResult(success=False, error="to_ws_session not resolved")
         if self._ws is None:
@@ -920,12 +920,13 @@ class HarnessMateAdapter(BasePlatformAdapter):
         kind = media_type if media_type in {"image", "audio", "video", "file"} else media_kind_for_name(display_name)
         message_id = str(metadata.get("message_id") or uuid.uuid4())
         try:
+            # 上传接口按 conversation.thread_id 校验会话归属，必须传 td-xxx，不能传 peer 的 ws_session_id
             url = await asyncio.to_thread(
                 upload_open_api_file,
                 file_path,
                 self.bot_id,
                 self.bot_key,
-                session_id,
+                thread_id,
                 self.upload_url,
             )
         except OpenApiUploadError as exc:
