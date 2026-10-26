@@ -8,6 +8,7 @@ import {
   detailAgentKey,
 } from '@/views/space/apps/detail-agent'
 import { t } from '@/locales'
+import { agentTypeTheme } from '@/utils/agent-theme'
 
 // 1.页面基础数据：会话属于当前详情页的智能体
 const route = useRoute()
@@ -22,6 +23,9 @@ const conversationListVersion = inject(conversationListVersionKey, ref(0))
 
 const agentId = computed(() => String(route.params?.agent_id ?? ''))
 const agentMatched = computed(() => Boolean(agent.value && agent.value.id === agentId.value))
+const pageBg = computed(() =>
+  agentTypeTheme(agentMatched.value ? agent.value?.agent_type : undefined).bg,
+)
 // 首屏转圈；翻页时只在底部提示，避免盖住已经连上的聊天卡片
 const pageLoading = computed(
   () =>
@@ -77,6 +81,7 @@ watch(conversationListVersion, () => {
   <a-spin
     :loading="pageLoading"
     class="block h-full w-full scrollbar-w-none overflow-scroll"
+    :style="{ backgroundColor: pageBg }"
     @scroll="handleScroll"
   >
     <div class="p-6">

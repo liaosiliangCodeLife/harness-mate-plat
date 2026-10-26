@@ -33,6 +33,7 @@ import {
 import { updateAgentOnlineStatus } from '@/services/agent'
 import { uploadFile, uploadImage } from '@/services/upload-file'
 import { useAccountStore } from '@/stores/account'
+import { agentTypeTheme } from '@/utils/agent-theme'
 import { genUuid } from '@/utils/uuid'
 import { normalizeChatFiles } from '@/utils/chat-files'
 import { reduceHermesReply, stripCursorGlyphs, stripStreamCursor } from '@/utils/hermes-channel'
@@ -213,6 +214,17 @@ let carriedToolEvents: unknown[] = []
 const title = computed(() => {
   const raw = titleOverride.value ?? props.conversation.title
   return raw?.trim() || t('common.unnamedSession')
+})
+const agentTheme = computed(() => agentTypeTheme(props.agent.agent_type))
+const showAgentTypeTag = computed(
+  () =>
+    agentTheme.value.labelKey !== null &&
+    props.conversation.message_count === 0 &&
+    messages.value.length === 0,
+)
+const agentTypeLabel = computed(() => {
+  const key = agentTheme.value.labelKey
+  return key ? t(key) : ''
 })
 const draftAutoSize = computed(() =>
   draftExpanded.value ? { minRows: 6, maxRows: 10 } : { minRows: 1, maxRows: 4 },
@@ -1078,6 +1090,13 @@ onUnmounted(() => {
             {{ t('common.pin') }}
           </a-tag>
           <div class="text-base text-gray-900 font-bold truncate">{{ title }}</div>
+          <span
+            v-if="showAgentTypeTag"
+            class="flex-shrink-0 rounded px-1.5 py-0.5 text-xs font-medium leading-none"
+            :style="{ backgroundColor: agentTheme.tagBg, color: agentTheme.tagColor }"
+          >
+            {{ agentTypeLabel }}
+          </span>
           <a-tag v-if="agent.status === 1" color="green" size="small" class="flex-shrink-0">
             {{ t('common.online') }}
           </a-tag>

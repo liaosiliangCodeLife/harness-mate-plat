@@ -2,6 +2,11 @@
 
 > 约定：每次提交前，先在本文件顶部新增一条 `## <版本号> — <YYYY-MM-DD HH:MM>`，列出这次提交里本模块的改动。版本号是平台级的（取本模块 `package.json` 的 `version`，页面上展示的 Version 与它同源），每次提交 +1；改动落在哪个模块，就写进哪个模块的记录。
 
+## 0.2.1 — 2026-10-26 10:30
+- 新增：智能体详情页背景按智能体类型着色 —— Hermes 浅蓝 `#EFF6FF`、DeepSeekHarness 浅紫 `#F5F3FF`、其它或未知浅灰 `#FAFAFA`，切换智能体时颜色跟着变
+- 新增：聊天卡片在**没有任何消息**时，标题旁显示智能体类型小标签（浅底 + 同色系文字，Hermes 蓝字、DeepSeek 紫字）；一旦有对话该标签自动隐藏
+- 新增：`ui/src/utils/agent-theme.ts` 统一管理类型配色与文案 key，详情页与聊天卡片共用
+
 ## 0.2.0 — 2026-10-26 08:47
 - 调整：聊天发送改为 RESTful 路径 `POST /agents/:agent_id/conversations/:thread_id/chat/send`，请求体带 `text` 与 `messageId`，有附件时再带 `files`
 - 调整：用户消息不再由前端补写落库（删除 `persistUserMessage`），改由服务端在发送接口内同步落库，刷新页面即可看到自己的提问
