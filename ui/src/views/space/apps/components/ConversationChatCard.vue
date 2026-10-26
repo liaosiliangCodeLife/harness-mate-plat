@@ -23,10 +23,17 @@ import {
   upsertAgentConversationMessage,
 } from '@/services/agent'
 import { useDeleteAgentConversation, useUpdateAgentConversation } from '@/hooks/use-agent'
-import { useHermesChannel } from '@/hooks/use-hermes-channel'
+import {
+  send as sendChatText,
+  start,
+  status,
+  subscribe,
+  unsubscribe,
+} from '@/hooks/use-chat-stream'
 import { updateAgentOnlineStatus } from '@/services/agent'
 import { uploadFile, uploadImage } from '@/services/upload-file'
 import { useAccountStore } from '@/stores/account'
+import { genUuid } from '@/utils/uuid'
 import { normalizeChatFiles } from '@/utils/chat-files'
 import { reduceHermesReply, stripCursorGlyphs, stripStreamCursor } from '@/utils/hermes-channel'
 import ChatBubble from '@/views/space/apps/components/ChatBubble.vue'
@@ -525,17 +532,6 @@ const persistHermesReply = (payload: HermesReplyData) => {
   )
 }
 
-const persistUserMessage = (messageId: string, content: string, files: ChatFile[]) => {
-  void upsertAgentConversationMessage(props.agent.id, props.conversation.id, {
-    message_id: messageId,
-    message_role: 'user',
-    message_content: content,
-    message_status: 1,
-    message_type: 'message',
-    message_info: files.length > 0 ? { files } : undefined,
-  }).catch(() => undefined)
-}
-
 // 8.合并网关 reply：增量更新同一条气泡，思考中单独提示，并按帧落库
 const handleReply = (payload: HermesReplyData) => {
   if (!acceptReplies) {
@@ -685,15 +681,16 @@ const releaseGeneration = (finalStatus: 1 | 2) => {
 /*
  * @Author Leon-liao
  * @Function: stopGeneration()
- * @Description //向 Hermes 发送 /stop，并立刻结束本地生成中状态
+ * @Description //通过聊天接口发送 /stop，并立刻结束本地生成中状态
  * @Date :2026/10/07 21:10:00
  * @Param: 无
  * @return：无
  */
-const stopGeneration = () => {
+const stopGeneration = async () => {
   clearReplyTimeout()
-  const sent = sendText('/stop')
-  if (!sent) {
+  try {
+    await sendChatText(props.agent.id, props.conversation.thread_id, '/stop', genUuid())
+  } catch {
     Message.error(t('conversation.stopFailed'))
   }
   acceptReplies = false
@@ -704,32 +701,19 @@ const stopGeneration = () => {
   releaseGeneration(2)
 }
 
-const { status, gatewayReady, start, sendText } = useHermesChannel({
-  agent: () => props.agent,
-  conversation: () => props.conversation,
-  onReply: handleReply,
-})
+// 未配置 gateway_key 时仍显示原来的提示条
+const gatewayReady = computed(() => Boolean(props.agent.gateway_key?.trim()))
 
-const inputDisabled = computed(
-  () => status.value === 'connecting' || status.value === 'reconnecting',
-)
+const inputDisabled = computed(() => status.value === 'connecting')
 
-// 9.先把用户消息上屏并落库，再只把当前文本发给 Hermes，不携带历史
+// 9.先把用户消息上屏，落库由发送接口完成，再只把当前文本发给 Hermes，不携带历史
 // 附件在发送时按一行一个 markdown 链接接在正文末尾，URL 原样保留
-const send = () => {
+const send = async () => {
   const text = buildOutgoingText()
   if (!text) {
     return
   }
-  if (status.value === 'connecting' || status.value === 'reconnecting') {
-    return
-  }
-  if (status.value !== 'connected') {
-    reportAgentOnlineStatus(0)
-    Message.error(t('conversation.sendFailed'))
-    return
-  }
-  const clientMsgId = crypto.randomUUID()
+  const clientMsgId = genUuid()
   const pendingId = `ws:pending:${clientMsgId}`
   const files: ChatFile[] = attachments.value.map((item) => ({
     name: item.name,
@@ -761,17 +745,15 @@ const send = () => {
   ]
   void scrollToBottom(true)
   armGenerationIdle()
-  persistUserMessage(clientMsgId, text, files)
-  const sent = sendText(text)
-  if (sent) {
+  try {
+    await sendChatText(props.agent.id, props.conversation.thread_id, text, clientMsgId, files)
     armReplyTimeout()
-  }
-  if (!sent) {
+  } catch {
     clearGenerationIdle()
     clearReplyTimeout()
     reportAgentOnlineStatus(0)
     Message.error(t('conversation.sendFailed'))
-    const failId = crypto.randomUUID()
+    const failId = genUuid()
     messages.value = [
       ...messages.value.filter((item) => item.id !== pendingId),
       {
@@ -992,7 +974,7 @@ const toggleDraftExpanded = () => {
   draftExpanded.value = !draftExpanded.value
 }
 
-// 全屏只移动当前卡片，不卸载组件，消息、草稿和 WebSocket 都留在原实例上
+// 全屏只移动当前卡片，不卸载组件，消息和草稿都留在原实例上
 const isFullscreen = ref(false)
 let bodyOverflowBeforeFullscreen = ''
 
@@ -1034,19 +1016,8 @@ watch(isFullscreen, (locked) => {
   document.body.style.overflow = bodyOverflowBeforeFullscreen
 })
 
-// 7.历史加载完成后再连网关；只在密钥、地址或对端标识真正变化时重连。
-// 详情页刷新智能体对象时这四项经常原样换一个引用，不能据此把已连上的通道掐掉。
-watch(
-  () =>
-    [props.agent.gateway_key, props.agent.gateway_url, props.agent.peer_id, props.agent.bot_id].join(
-      '\0',
-    ),
-  () => {
-    if (historyReady.value) {
-      start()
-    }
-  },
-)
+// 这条会话在整页 SSE 上的订阅键
+const streamKey = () => `${props.conversation.account_id}:${props.conversation.thread_id}`
 
 onMounted(async () => {
   window.addEventListener('keydown', onFullscreenKeydown)
@@ -1062,10 +1033,12 @@ onMounted(async () => {
   }
   await loadHistory()
   historyReady.value = true
+  subscribe(streamKey(), handleReply)
   start()
 })
 
 onUnmounted(() => {
+  unsubscribe(streamKey())
   window.removeEventListener('keydown', onFullscreenKeydown)
   listResizeObserver?.disconnect()
   listResizeObserver = null

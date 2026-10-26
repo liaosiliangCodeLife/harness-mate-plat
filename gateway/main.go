@@ -12,6 +12,7 @@ import (
 	"ws_gateway/config"
 	jwtauth "ws_gateway/internal/jwt"
 	gwlog "ws_gateway/internal/logging"
+	"ws_gateway/internal/platform"
 	redisstore "ws_gateway/internal/redis"
 	"ws_gateway/internal/router"
 	"ws_gateway/internal/ws"
@@ -58,7 +59,15 @@ func run() error {
 	mapping := redisstore.NewMapping(redisClient, logger)
 	pool := ws.NewSessionConnPool()
 	msgRouter := router.New(pool, mapping, cfg.Instance, logger)
-	verifier := jwtauth.NewVerifier(cfg.JWTSecret)
+	var provider jwtauth.KeyProvider
+	fallback := ""
+	if cfg.PlatformAPIBaseURL != "" {
+		provider = platform.New(cfg.PlatformAPIBaseURL, cfg.PlatformInternalToken, cfg.BotKeyCacheTTL, logger)
+	} else {
+		fallback = cfg.JWTSecret
+		logger.Warn("未配置 PLATFORM_API_BASE_URL，回退到共享密钥模式，不安全")
+	}
+	verifier := jwtauth.NewVerifier(provider, fallback)
 
 	server := ws.NewServer(
 		cfg,

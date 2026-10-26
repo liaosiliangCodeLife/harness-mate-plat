@@ -8,7 +8,7 @@
 from dataclasses import dataclass
 
 from flask import request
-from flask_login import logout_user, login_required, current_user
+from flask_login import logout_user, login_required
 from injector import inject
 
 from internal.schema.auth_schema import PasswordLoginReq, PasswordLoginResp, RegisterReq, SendRegisterCodeReq
@@ -50,8 +50,7 @@ class AuthHandler:
 
     @login_required
     def logout(self):
-        """退出登录，清除服务端会话并提示前端清除授权凭证"""
-        self.account_service.clear_login_session(current_user.get_id())
+        """退出登录，清本地登录态"""
         logout_user()
         return success_message("退出登陆成功")
 

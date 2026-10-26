@@ -29,7 +29,7 @@ func (s *WSServer) handleWS(w http.ResponseWriter, r *http.Request) {
 // Upgrade 完成 WebSocket 升级、JWT 验签、Redis 注册与连接池注册。
 func (s *WSServer) Upgrade(w http.ResponseWriter, r *http.Request) (*SessionConn, error) {
 	token := r.URL.Query().Get("token")
-	claims, err := s.verifier.ParseSessionToken(token)
+	claims, err := s.verifier.ParseSessionToken(r.Context(), token)
 	if err != nil {
 		http.Error(w, "invalid token", http.StatusUnauthorized)
 		return nil, err

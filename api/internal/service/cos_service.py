@@ -34,9 +34,11 @@ _UPLOAD_CHUNK_SIZE = 8 * 1024 * 1024
 @dataclass
 class CosService:
     """腾讯云cos对象存储服务"""
+    ROOT_AGENT_ATTACH = "agents_attach"
+    ROOT_PLATFORM_ATTACH = "harness_platform_attach"
     upload_file_service: UploadFileService
 
-    def upload_file(self, file: FileStorage, only_image: bool, account: Account) -> UploadFile:
+    def upload_file(self, file: FileStorage, only_image: bool, account: Account, root_prefix: str) -> UploadFile:
         """上传文件到腾讯云cos对象存储，上传后返回文件的信息"""
         # 1.提取文件扩展名并检测是否可以上传
         filename = file.filename
@@ -60,7 +62,7 @@ class CosService:
         # 3.生成一个随机的名字
         random_filename = str(uuid.uuid4()) + "." + extension
         now = datetime.now()
-        upload_filename = f"{now.year}/{now.month:02d}/{now.day:02d}/{random_filename}"
+        upload_filename = f"{root_prefix}/{now.year}/{now.month:02d}/{now.day:02d}/{random_filename}"
 
         # 4.先取大小，再分块更新摘要，不把整段内容留在内存里
         file.stream.seek(0, 2)

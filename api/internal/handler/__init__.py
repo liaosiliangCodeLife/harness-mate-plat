@@ -8,7 +8,9 @@
 from .account_handler import AccountHandler
 from .agent_handler import AgentHandler
 from .auth_handler import AuthHandler
+from .chat_handler import ChatHandler
 from .conversation_handler import ConversationHandler
+from .gateway_handler import GatewayHandler
 from .message_handler import MessageHandler
 from .oauth_handler import OAuthHandler
 from .server_handler import ServerHandler
@@ -22,5 +24,7 @@ __all__ = [
     "ServerHandler",
     "AgentHandler",
     "ConversationHandler",
+    "GatewayHandler",
     "MessageHandler",
+    "ChatHandler",
 ]

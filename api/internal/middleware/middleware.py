@@ -30,13 +30,9 @@ class Middleware:
             # 2.校验获取access_token
             access_token = self._validate_credential(request)
 
-            # 3.解析token信息，并核对该账号当前唯一会话
+            # 3.解析token信息
             payload = self.jwt_service.parse_token(access_token)
             account_id = payload.get("sub")
-            jti = payload.get("jti")
-            current_jti = self.account_service.get_login_session(account_id)
-            if not jti or current_jti is None or current_jti != jti:
-                raise UnauthorizedException("账号已在其他设备登录，请重新登录")
             account = self.account_service.get_account(account_id)
             if not account:
                 raise UnauthorizedException("当前账户不存在，请重新登录")
@@ -46,10 +42,21 @@ class Middleware:
 
     @classmethod
     def _validate_credential(cls, request: Request) -> str:
-        """校验请求头中的凭证信息，涵盖access_token"""
+        """
+        * @Author Leon-liao
+        * @Function: _validate_credential(request: Request) -> str
+        * @Description //校验凭证：优先从 Authorization 头取 Bearer token，没有头时再读 query 参数 token
+        * @Date :2026/10/24 00:07:48
+        * @Param: request: Flask 请求对象，Request。从请求头 Authorization 或查询参数 token 读取登录凭证
+        * @return：access_token 字符串。请求头格式不对，或头和 query 都没有凭证时抛出 UnauthorizedException
+        """
         # 1.提取请求头headers中的信息
         auth_header = request.headers.get("Authorization")
         if not auth_header:
+            # 1.1 EventSource 不能带自定义头，没有 Authorization 时用 query token 兜底
+            token = request.args.get("token")
+            if token:
+                return token
             raise UnauthorizedException("该接口需要授权才能访问，请登录后尝试")
 
         # 2.请求信息中没有空格分隔符，则验证失败，Authorization: Bearer access_token

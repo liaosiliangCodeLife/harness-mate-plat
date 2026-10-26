@@ -54,7 +54,16 @@ ws://<host>:<port>/ws?token=<jwt>
 
 ### 3.2 JWT 鉴权
 
-握手阶段通过 Query 参数 `token` 传递 JWT。网关使用共享密钥 `JWT_SECRET`，算法 **HMAC-SHA256** 验签。
+握手仍是 `GET /ws?token=<jwt>`。签名算法是 **HMAC-SHA256**，密钥按 bot 单独获取，不再用全网关共享的 `JWT_SECRET`。
+
+1. 网关先不解签，只解析 payload，取出 `ws_session_id`（即 bot_id）。为空时回退 `sub`；仍为空则拒绝。
+2. 向平台请求 `GET /internal/bot-key?bot_id=<bot_id>`，请求头 `X-Internal-Token`。
+3. 平台返回该 bot 所属网关的 `gateway_key`。
+4. 网关用这个 key 做 HMAC-SHA256 验签。通过则放行，否则 HTTP `401`。
+
+bot key 在网关本地缓存 60 秒（`PLATFORM_BOT_KEY_CACHE_TTL`，默认 `60s`）。平台 API 不可达、返回非成功或 key 为空时**直接拒绝连接**，不降级放行。
+
+未配置 `PLATFORM_API_BASE_URL` 时才回退用 `JWT_SECRET` 验签，启动时打出告警。该模式不安全，只用于本地兼容。
 
 **Claims 结构：**
 
@@ -221,7 +230,10 @@ Session A (<ws_session_id_A>)      WS Gateway      Session B (<ws_session_id_B>)
 | `WS_GATEWAY_HOST` | 监听地址 |
 | `WS_GATEWAY_PORT` | 监听端口 |
 | `WS_GATEWAY_INSTANCE` | 本实例 ID，写入 Redis |
-| `JWT_SECRET` | JWT 验签密钥（HMAC-SHA256） |
+| `PLATFORM_API_BASE_URL` | 平台 API 根地址。非空时按 bot_id 取 key 验签 |
+| `PLATFORM_INTERNAL_TOKEN` | 调用平台 `GET /internal/bot-key` 的服务间令牌 |
+| `PLATFORM_BOT_KEY_CACHE_TTL` | bot key 缓存时间，Go duration 字符串，默认 `60s` |
+| `JWT_SECRET` | 仅在未配置 `PLATFORM_API_BASE_URL` 时作为回退验签密钥 |
 | `REDIS_URL` | Redis 连接地址 |
 | `WS_GATEWAY_LOG_DIR` | 日志目录（可选） |
 | `WS_GATEWAY_LOG_LEVEL` | 日志级别（可选） |
@@ -233,7 +245,7 @@ Session A (<ws_session_id_A>)      WS Gateway      Session B (<ws_session_id_B>)
 ### 11.1 客户端最小实现
 
 1. 持有唯一 `ws_session_id`
-2. 使用与网关相同的 `JWT_SECRET` 签发 JWT
+2. 使用该 bot 的 `gateway_key` 签发 JWT，`ws_session_id` 填 bot_id
 3. 连接 `ws://<host>:<port>/ws?token=<jwt>`
 4. 定期发送 WebSocket Ping（建议 ≤ 50s）
 5. 发送消息：`{"to": "<目标-ws_session_id>", "data": <任意JSON>}`

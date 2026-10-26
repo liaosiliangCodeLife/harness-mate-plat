@@ -19,6 +19,8 @@ from internal.handler import (
     AgentHandler,
     ConversationHandler,
     MessageHandler,
+    ChatHandler,
+    GatewayHandler,
 )
 
 
@@ -34,6 +36,8 @@ class Router:
     agent_handler: AgentHandler
     conversation_handler: ConversationHandler
     message_handler: MessageHandler
+    chat_handler: ChatHandler
+    gateway_handler: GatewayHandler
 
     def register_router(self, app: Flask):
         """注册路由"""
@@ -143,5 +147,17 @@ class Router:
             view_func=self.message_handler.create_message,
         )
 
-        # 9.在应用上注册蓝图
+        # 9.聊天消息转发。浏览器只打到 API，由 API 转给 Hub
+        bp.add_url_rule(
+            "/agents/<string:agent_id>/conversations/<string:thread_id>/chat/send",
+            methods=["POST"],
+            view_func=self.chat_handler.send_message,
+        )
+        bp.add_url_rule("/chat/stream", methods=["GET"], view_func=self.chat_handler.stream)
+
+        # 10.Hub 回写完成帧。路由不带 /api 前缀，nginx 对外才加
+        bp.add_url_rule("/internal/messages", methods=["POST"], view_func=self.chat_handler.internal_create_message)
+        bp.add_url_rule("/internal/bot-key", methods=["GET"], view_func=self.gateway_handler.get_bot_key)
+
+        # 11.在应用上注册蓝图
         app.register_blueprint(bp)

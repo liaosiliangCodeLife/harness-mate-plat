@@ -1162,6 +1162,213 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MTY0NTY3O
       "message": ""
   }
   ```
+### 4.13 发送聊天消息
+
+- **接口说明**：该接口把用户输入的一行文本发给指定会话，并在同一请求里完成「提问落库 + 投递」两件事：资源层级由 URL 表达（智能体 → 会话 → 聊天 → 发送），请求体只带消息内容与客户端生成的幂等键。服务端先校验智能体与会话是否属于当前账号，再按 `message_id` 幂等写入一条 `user` 消息（状态 `0` 发送中），然后转发给 Hub；转发成功把状态改为 `1`，转发失败改为 `2` 并返回错误。返回成功只代表 Hub 已收下，**不代表智能体已回复**；回复由 4.14 的 SSE 流下发，完成帧再由 Hub 回写到 4.15 落库。
+
+- **接口信息**：`授权`+`POST:/agents/:agent_id/conversations/:thread_id/chat/send`
+
+- **接口参数**：
+
+  - 路径参数：
+    - `agent_id -> str`：必填，智能体 id（uuid 字符串），必须是当前登录账号下未删除的智能体。
+    - `thread_id -> str`：必填，会话线程标识，最长 255 个字符，必须能在该智能体下找到对应会话记录。
+  - 请求参数：
+    - `message_id -> str`：必填，客户端生成的幂等键，长度 1-64。与 `conversation_id` 组成唯一键，重复提交只更新原记录，不会写两条。
+    - `text -> str`：必填，消息正文，最长 4000 个字符，首尾空白会被去掉。
+    - `files -> list`：可选，附件列表，原样写进该条消息的 `message_info.files`。
+  - 响应参数：
+    - `sent -> bool`：固定为 `true`，表示 Hub 已接收该帧。
+
+- **消息状态流转**：
+
+  | 阶段 | message_status | 说明 |
+  |---|---|---|
+  | 落库（请求进来） | `0` | 发送中 |
+  | Hub 返回 200 | `1` | 已发送，智能体侧开始处理 |
+  | 未绑定网关 / 连接未就绪 / 转发失败 | `2` | 发送失败，记录保留可追溯 |
+
+- **错误说明**：
+
+  - `not_found`：智能体不存在、会话不存在，或二者不属于当前账号（此时不写库）。
+  - `validate_error`：`message_id` 或 `text` 校验不通过。
+  - `fail`：智能体未绑定网关；Hub 侧连接未就绪（首次发送会懒建连，通常重试一次即可）；Hub 转发失败。**这三种情况用户消息已落库并标记为 `2`（发送失败）**，客户端用同一个 `message_id` 重发不会产生重复记录。
+
+- **请求示例**：
+
+  ```bash
+  POST:/agents/35adf19b-ac1f-4c57-9499-bb76ab7757e9/conversations/td-1791623452452/chat/send
+  {
+      "message_id": "9f1c2b5e-7d34-4a11-9c8e-2b6d0f4a7e51",
+      "text": "帮我总结一下今天的会议"
+  }
+  ```
+
+- **响应示例**：
+
+  ```json
+  {
+      "code": "success",
+      "data": {
+          "sent": true
+      },
+      "message": ""
+  }
+  ```
+
+### 4.14 订阅聊天消息（SSE）
+
+- **接口说明**：该接口建立一条 SSE 长连接，承载当前登录账号**全部会话**的下行帧。服务端订阅 Redis 频道 `stream:<account_id>`，把网关下行帧原样以 `data:` 行推送；连接空闲每 20 秒发一次注释行 `: ping` 作心跳。前端按帧内 `data.account_id` 与 `data.thread_id` 分发到对应会话气泡。
+
+- **接口信息**：`授权`+`GET:/chat/stream`
+
+- **接口参数**：
+
+  - 请求参数：
+    - `token -> str`：登录返回的 `access_token`。EventSource 不能自定义请求头，因此这里允许用查询参数传 token；同时也支持标准的 `Authorization: Bearer` 头。
+  - 响应参数：`Content-Type: text/event-stream`，逐条下发网关原始帧。
+
+- **帧结构**：
+
+  ```json
+  {
+      "from": "hub",
+      "to": "pr-xxx",
+      "data": {
+          "type": "reply",
+          "account_id": "bb0b708e-9d53-4166-bbcc-8b86c4839ebf",
+          "thread_id": "td-1791623452452",
+          "data": {
+              "text": "今天开了三个会",
+              "message_id": "m1",
+              "delta": true,
+              "done": false,
+              "reasoning": "",
+              "status": ""
+          }
+      }
+  }
+  ```
+
+  - `data.data.type -> str`：只处理 `reply`，其它类型客户端忽略。
+  - `data.data.account_id -> uuid`：账号 id，前端据此拼接订阅键。
+  - `data.data.thread_id -> str`：会话线程标识。
+  - `data.data.data.text -> str`：本帧文本。`delta=true` 为增量帧，`done=true` 为最终帧（此时文本为完整内容，并可能带 `url`、`file_name`、`media_type` 文件字段）。
+  - `data.data.data.reasoning -> str`：可选，思考过程。
+  - `data.data.data.status -> str`：可选，`thinking` 表示思考中。
+
+- **请求示例**：
+
+  ```bash
+  curl -N -H "Authorization: Bearer <access_token>" \
+    https://<平台域名>/api/chat/stream
+  ```
+
+- **响应示例**：
+
+  ```
+  : ping
+
+  data: {"from":"hub","to":"pr-xxx","data":{"type":"reply","account_id":"bb0b708e-9d53-4166-bbcc-8b86c4839ebf","thread_id":"td-1791623452452","data":{"text":"今天","message_id":"m1","delta":true}}}
+
+  data: {"from":"hub","to":"pr-xxx","data":{"type":"reply","account_id":"bb0b708e-9d53-4166-bbcc-8b86c4839ebf","thread_id":"td-1791623452452","data":{"text":"今天开了三个会","message_id":"m1","done":true}}}
+  ```
+
+### 4.15 内部回写消息（服务间）
+
+- **接口说明**：该接口仅供 Hub 调用，把智能体的 `done` 帧写入 `message` 表。**不走用户登录态**（用户可能已离线），改用请求头 `X-Internal-Token` 校验；不对外暴露，Nginx 禁止外部访问。
+
+- **接口信息**：`X-Internal-Token`+`POST:/internal/messages`
+
+- **接口参数**：
+
+  - 请求参数：完整的网关下行帧 JSON，服务端只处理 `data.data.done == true` 的帧。
+  - 响应参数：
+    - `stored -> bool`：`true` 表示已落库，`false` 表示无需落库或会话不存在。
+
+- **状态码契约**：
+
+  | 情况 | HTTP | body |
+  |---|---|---|
+  | 令牌不匹配 | 403 | `code=forbidden` |
+  | body 不是 JSON 对象 | 400 | `code=validate_error` |
+  | 不是 done 帧 | 200 | `code=success`，`data.stored=false` |
+  | 会话不存在 / account_id 非法 | 200 | `code=success`，`data.stored=false` |
+  | 落库成功 | 200 | `code=success`，`data.stored=true` |
+  | 内部异常 | 500 | `code=fail` |
+
+- **请求示例**：
+
+  ```bash
+  curl -X POST https://<平台域名>/api/internal/messages \
+    -H "Content-Type: application/json" \
+    -H "X-Internal-Token: <INTERNAL_TOKEN>" \
+    -d '{"data":{"account_id":"<uuid>","thread_id":"td-xxx","data":{"done":true,"message_id":"m1","text":"完整回复"}}}'
+  ```
+
+- **响应示例**：
+
+  ```json
+  {
+      "code": "success",
+      "data": {
+          "stored": true
+      },
+      "message": ""
+  }
+  ```
+
+### 4.16 获取 bot 密钥（服务间）
+
+- **接口说明**：该接口仅供网关调用，按 `session_id` 返回未删除智能体所属网关的验签密钥。网关的上游连接有两种身份：插件连上来报 `bot_id`，Hub 连上来报 `peer_id`，所以本接口两种都要认。**不走用户登录态**，改用请求头 `X-Internal-Token` 校验；不对外暴露，Nginx 禁止外部访问。网关先从 JWT payload 取出 `ws_session_id`，再拿这里返回的 `key` 做 HMAC-SHA256 验签。
+
+- **接口信息**：`X-Internal-Token`+`GET:/internal/bot-key`
+
+- **接口参数**：
+
+  - 请求参数：
+    - `session_id -> str`：ws 会话标识，query 参数，必填。取 `agent.bot_id` 或 `agent.peer_id` 均可命中；为兼容旧调用方，也接受 `bot_id` 作为同义参数名。
+  - 响应参数：
+    - `bot_id -> str`：智能体业务标识。
+    - `key -> str`：所属网关的 `gateway_key`，网关用它验签。
+    - `agent_id -> str`：智能体记录主键。
+    - `account_id -> str`：所属账号主键。
+    - `peer_id -> str`：对端设备标识，没有时为空字符串。
+
+- **错误说明**：
+
+  | 情况 | HTTP | body |
+  |---|---|---|
+  | 令牌不匹配 | 403 | `code=forbidden`，`message=内部令牌无效` |
+  | `session_id` 为空 | 400 | `code=validate_error`，`message=session_id 不能为空` |
+  | 智能体不存在或已删除 | 404 | `code=not_found`，`message=session_id 对应的智能体不存在` |
+  | 未绑定网关或密钥为空 | 404 | `code=not_found`，`message=智能体未绑定网关` |
+  | 内部异常 | 500 | `code=fail`，`message=获取 bot 密钥失败` |
+
+- **请求示例**：
+
+  ```bash
+  curl -G https://<平台域名>/api/internal/bot-key \
+    -H "X-Internal-Token: <INTERNAL_TOKEN>" \
+    --data-urlencode "session_id=<bot_id 或 peer_id>"
+  ```
+
+- **响应示例**：
+
+  ```json
+  {
+      "code": "success",
+      "data": {
+          "bot_id": "bot-example",
+          "key": "example-gateway-key",
+          "agent_id": "35adf19b-ac1f-4c57-9499-bb76ab7757e9",
+          "account_id": "bb0b708e-9d53-4166-bbcc-8b86c4839ebf",
+          "peer_id": "peer-example"
+      },
+      "message": ""
+  }
+  ```
+
 ## 05. WS 网关模块
 
 ### 5.1 获取 WS 网关信息

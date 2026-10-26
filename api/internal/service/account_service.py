@@ -10,7 +10,7 @@ import secrets
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from flask import request
 from injector import inject
@@ -28,8 +28,6 @@ from .mail_service import MailService
 # 注册验证码 15 分钟有效，同一邮箱 60 秒内不能重复发送
 _REGISTER_CODE_TTL = 900
 _REGISTER_CODE_COOLDOWN = 60
-# 登录会话与 JWT 一样保留 30 天，新登录会覆盖旧值
-_LOGIN_SESSION_TTL = 30 * 24 * 60 * 60
 
 
 @inject
@@ -176,14 +174,12 @@ class AccountService(BaseService):
         ):
             raise FailException("账号不存在或者密码错误，请核实后重试")
 
-        # 3.生成凭证信息，jti 用来标识这一次登录
+        # 3.生成凭证信息
         expire_at = int((datetime.now() + timedelta(days=30)).timestamp())
-        jti = str(uuid4())
         payload = {
             "sub": str(account.id),
             "iss": "llmops",
             "exp": expire_at,
-            "jti": jti,
         }
         access_token = self.jwt_service.generate_token(payload)
 
@@ -194,60 +190,7 @@ class AccountService(BaseService):
             last_login_ip=request.remote_addr,
         )
 
-        # 5.登记唯一会话。覆盖旧 jti 后，上一次登录的 token 即失效
-        self.save_login_session(account.id, jti)
-
         return {
             "expire_at": expire_at,
             "access_token": access_token,
         }
-
-    def save_login_session(self, account_id: Any, jti: str) -> None:
-        """
-        * @Author Leon-liao
-        * @Function: save_login_session(account_id: Any, jti: str)
-        * @Description //把本次登录的 jti 写成该账号的唯一会话，新值覆盖旧值
-        * @Date :2026/10/07 20:45:00
-        * @Param: account_id: 账号 id，字符串或 UUID；jti: 本次登录的会话标识，字符串
-        * @return：无
-        """
-        self.redis_client.set(self.login_session_key(account_id), jti, ex=_LOGIN_SESSION_TTL)
-
-    def get_login_session(self, account_id: Any) -> str | None:
-        """
-        * @Author Leon-liao
-        * @Function: get_login_session(account_id: Any)
-        * @Description //读取该账号当前有效的登录会话标识
-        * @Date :2026/10/07 20:45:00
-        * @Param: account_id: 账号 id，字符串或 UUID
-        * @return：当前 jti；键不存在时返回 None
-        """
-        stored = self.redis_client.get(self.login_session_key(account_id))
-        if stored is None:
-            return None
-        if isinstance(stored, (bytes, bytearray)):
-            return stored.decode("utf-8")
-        return str(stored)
-
-    def clear_login_session(self, account_id: Any) -> None:
-        """
-        * @Author Leon-liao
-        * @Function: clear_login_session(account_id: Any)
-        * @Description //登出时删除该账号的登录会话，使当前 token 立即失效
-        * @Date :2026/10/07 20:45:00
-        * @Param: account_id: 账号 id，字符串或 UUID
-        * @return：无
-        """
-        self.redis_client.delete(self.login_session_key(account_id))
-
-    @staticmethod
-    def login_session_key(account_id: Any) -> str:
-        """
-        * @Author Leon-liao
-        * @Function: login_session_key(account_id: Any)
-        * @Description //拼出该账号唯一登录会话的 Redis 键
-        * @Date :2026/10/07 20:45:00
-        * @Param: account_id: 账号 id，字符串或 UUID
-        * @return：Redis 键 login:session:<account_id>
-        """
-        return f"login:session:{account_id}"
