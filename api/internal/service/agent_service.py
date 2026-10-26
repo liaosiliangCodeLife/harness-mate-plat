@@ -5,14 +5,17 @@
 @Author  : liaosiliang1234@126.com
 @File    : agent_service.py
 """
+import logging
 from dataclasses import dataclass
 from uuid import UUID
 
+import requests
 from injector import inject
 from sqlalchemy import func, inspect, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
 
+from config import Config
 from internal.exception import FailException, NotFoundException
 from internal.lib.helper import utc_now
 from internal.model import Agent, Conversation, Message, Server
@@ -21,8 +24,13 @@ from pkg.paginator import Paginator
 from pkg.sqlalchemy import SQLAlchemy
 from .base_service import BaseService
 
+logger = logging.getLogger(__name__)
+
 # 读接口把 message 表实时统计挂在实例上的键，schema 只读这个值，不读 agent.last_seen_at 列
 _LIVE_LAST_SEEN_AT = "live_last_seen_at"
+
+# 删除智能体后通知 Hub 断开上游连接的超时秒数
+_HUB_DISCONNECT_TIMEOUT_SECONDS = 2
 
 
 @inject
@@ -31,6 +39,7 @@ class AgentService(BaseService):
     """智能体服务"""
 
     db: SQLAlchemy
+    config: Config
 
     def get_agents_with_page(
             self,
@@ -127,9 +136,49 @@ class AgentService(BaseService):
         return self.update(agent, **payload)
 
     def delete_agent(self, agent_id: str, account_id: UUID) -> Agent:
-        """软删除智能体，仅写入 deleted_at，不改动已产生的会话与消息"""
+        """软删除智能体，仅写入 deleted_at，不改动已产生的会话与消息；删后 best-effort 通知 Hub 断开上游 WS"""
         agent = self.get_agent(agent_id, account_id)
-        return self.update(agent, deleted_at=utc_now())
+        updated = self.update(agent, deleted_at=utc_now())
+        self._notify_hub_disconnect(str(agent.id))
+        return updated
+
+    def _notify_hub_disconnect(self, agent_id: str) -> None:
+        """
+        * @Author Leon-liao
+        * @Function: _notify_hub_disconnect(agent_id: str)
+        * @Description //best-effort 通知 Hub 关闭该智能体的上游 WebSocket；失败只记日志，不影响删除结果
+        * @Date :2026/10/26 22:43:00
+        * @Param: agent_id: 已软删除的智能体 id 字符串
+        * @return：无
+        """
+        base_url = str(self.config.HUB_BASE_URL or "").rstrip("/")
+        headers = {
+            "Content-Type": "application/json",
+            "X-Internal-Token": str(self.config.INTERNAL_TOKEN or ""),
+        }
+        try:
+            response = requests.post(
+                f"{base_url}/disconnect",
+                json={"agent_id": agent_id},
+                headers=headers,
+                timeout=_HUB_DISCONNECT_TIMEOUT_SECONDS,
+            )
+        except requests.RequestException:
+            logger.warning("通知 Hub 断开连接失败，agent_id=%s, status_code=%s", agent_id, "none")
+            return
+
+        try:
+            status_code = response.status_code
+        finally:
+            response.close()
+
+        # 200 已断开；404 池中本来就没有连接，对删除流程都可接受
+        if status_code not in (200, 404):
+            logger.warning(
+                "通知 Hub 断开连接失败，agent_id=%s, status_code=%s",
+                agent_id,
+                status_code,
+            )
 
     def update_online_status(self, agent_id: str, account_id: UUID, status: int) -> Agent:
         """

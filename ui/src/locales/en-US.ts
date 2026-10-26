@@ -45,7 +45,6 @@ const enUS = {
   layout: {
     home: 'Home',
     mySpace: 'My Space',
-    channelService: 'Channel Service',
     apiIntegration: 'API Integration',
     accountSettings: 'Account Settings',
     signOut: 'Sign Out',
@@ -272,18 +271,6 @@ const enUS = {
     deleteConfirmTitle: 'Delete this conversation?',
     deleteConfirmContent:
       'Deleting this conversation permanently removes every message in it. This cannot be undone.',
-  },
-  server: {
-    title: 'Channel Service',
-    gatewayAddress: 'Gateway URL',
-    gatewaySecret: 'Gateway secret',
-    updatedAt: 'Updated',
-    createdAt: 'Created',
-    emptyGateway: 'No gateways yet',
-    emptyChannel: 'No channel service yet',
-    gatewayTitle: 'Gateway {n}',
-    digits: '0123456789',
-    ten: '10',
   },
   openapi: {
     title: 'API Integration',

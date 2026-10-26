@@ -20,11 +20,6 @@ const router = createRouter({
           component: () => import('@/views/pages/HomeView.vue'),
         },
         {
-          path: 'server',
-          name: 'server-list',
-          component: () => import('@/views/server/ListView.vue'),
-        },
-        {
           path: 'space',
           component: () => import('@/views/space/SpaceLayoutView.vue'),
           children: [

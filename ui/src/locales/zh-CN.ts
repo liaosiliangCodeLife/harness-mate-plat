@@ -45,7 +45,6 @@ const zhCN = {
   layout: {
     home: '主页',
     mySpace: '个人空间',
-    channelService: '频道服务',
     apiIntegration: '业务对接',
     accountSettings: '账号设置',
     signOut: '退出登录',
@@ -269,18 +268,6 @@ const zhCN = {
     messageCount: '消息 {count}',
     deleteConfirmTitle: '要删除该会话么?',
     deleteConfirmContent: '删除会话信息后，删除会话后，该会话下的所有聊天记录将被永远删除，无法找回。',
-  },
-  server: {
-    title: '频道服务',
-    gatewayAddress: '网关地址',
-    gatewaySecret: '网关密钥',
-    updatedAt: '更新时间',
-    createdAt: '创建时间',
-    emptyGateway: '暂无网关',
-    emptyChannel: '暂无频道服务',
-    gatewayTitle: '网关{n}',
-    digits: '零一二三四五六七八九',
-    ten: '十',
   },
   openapi: {
     title: '业务对接',

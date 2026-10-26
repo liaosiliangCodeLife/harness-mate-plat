@@ -79,6 +79,34 @@ func (p *Pool) Get(cfg ConnConfig) *Conn {
 
 /**
  * @Author liaosiliang1234@126.com
+ * @Function: (p *Pool) Remove(agentID string)
+ * @Description //从连接池移除指定 agent 的上游连接；持锁取出并 delete，解锁后再 Close
+ * @Date :2026/10/26 22:43:00
+ * @Param: agentID 要断开的智能体 id
+ * @return: 池中存在该连接并已发起关闭时返回 true；不存在返回 false
+ */
+func (p *Pool) Remove(agentID string) bool {
+	p.mu.Lock()
+	conn, ok := p.conns[agentID]
+	if !ok {
+		p.mu.Unlock()
+		return false
+	}
+	delete(p.conns, agentID)
+	p.mu.Unlock()
+
+	if err := conn.Close(); err != nil {
+		p.logger.Warn(
+			"close gateway connection failed",
+			slog.String("agent_id", agentID),
+			slog.Any("err", err),
+		)
+	}
+	return true
+}
+
+/**
+ * @Author liaosiliang1234@126.com
  * @Function: (p *Pool) CloseAll()
  * @Description //关闭池中全部上游连接并等待它们退出
  * @Date :2026/10/23 10:39:00

@@ -30,13 +30,6 @@ const route = useRoute()
       {{ t('layout.mySpace') }}
     </router-link>
     <router-link
-      to="/server"
-      :class="`flex items-center gap-2 h-8 leading-8 rounded-lg transition-all px-2 text-gray-700 hover:text-gray-900 hover:bg-gray-200 ${route.path.startsWith('/server') ? 'bg-gray-100' : ''}`"
-    >
-      <icon-link />
-      {{ t('layout.channelService') }}
-    </router-link>
-    <router-link
       to="/openapi"
       class="flex items-center gap-2 h-8 leading-8 rounded-lg transition-all px-2 text-gray-700 hover:text-gray-900 hover:bg-gray-200"
       active-class="bg-gray-100"

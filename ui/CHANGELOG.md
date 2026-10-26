@@ -2,6 +2,13 @@
 
 > 约定：每次提交前，先在本文件顶部新增一条 `## <版本号> — <YYYY-MM-DD HH:MM>`，列出这次提交里本模块的改动。版本号是平台级的（取本模块 `package.json` 的 `version`，页面上展示的 Version 与它同源），每次提交 +1；改动落在哪个模块，就写进哪个模块的记录。
 
+## 0.3.1 — 2026-10-26 23:02
+- 移除：侧边栏「频道服务」菜单项与 `/server` 路由、页面 `views/server/ListView.vue`
+- 移除：无路由引用的孤儿页面 `views/space/server/ListView.vue`
+- 调整：`hooks/use-server.ts` 只保留 `useGetOpenServer`（创建智能体仍用它拉网关），删掉无引用的 `useGetServer` / `useGetOpenServers`
+- 调整：locales 删除 `layout.channelService` 与整段 `server`（zh-CN / en-US 结构保持一致）
+
+
 ## 0.3.0 — 2026-10-26 15:28
 - 新增：智能体详情页背景改为品牌海报 —— 白底 + 居中的类型大字（`HERMES AGENT` / `DEEPSEEK AGENT`，无 @）+ 一行灰色说明，按 agent_type 自动切换
 - 新增：新建会话还没有任何消息时，聊天区也显示同一套海报；全屏查看该卡片时海报自动放大约 10 倍

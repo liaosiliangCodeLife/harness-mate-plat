@@ -1,7 +1,7 @@
 /*
  * This is the projet for brtc R&D Platform
  * @Author Leon-liao <liaosiliang@alltman.com>
- * @Description //Hub 的 HTTP 入口，提供 POST /send
+ * @Description //Hub 的 HTTP 入口，提供 POST /send 与 POST /disconnect
  * @File: http.go
  * @Time: 2026/10/23 10:39:00
  * @All Rights Reserve By Brtc
@@ -51,6 +51,10 @@ type sendRequest struct {
 	Text       string `json:"text"`
 }
 
+type disconnectRequest struct {
+	AgentID string `json:"agent_id"`
+}
+
 type textBody struct {
 	Type string `json:"type"`
 	Text string `json:"text"`
@@ -77,7 +81,7 @@ type statusBody struct {
 /**
  * @Author liaosiliang1234@126.com
  * @Function: New(cfg *config.Config, logger *slog.Logger, pool *agent.Pool)
- * @Description //创建绑定 POST /send 和 GET /healthz 的 HTTP 服务
+ * @Description //创建绑定 POST /send、POST /disconnect 和 GET /healthz 的 HTTP 服务
  * @Date :2026/10/23 10:39:00
  * @Param: cfg 运行配置；logger 日志；pool 上游连接池
  * @return: *Server
@@ -90,6 +94,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *agent.Pool) *Server {
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /send", srv.handleSend)
+	mux.HandleFunc("POST /disconnect", srv.handleDisconnect)
 	mux.HandleFunc("GET /healthz", srv.handleHealth)
 	srv.http = &http.Server{
 		Addr:              cfg.HTTPAddr,
@@ -230,6 +235,43 @@ func (s *Server) sendWhenReady(ctx context.Context, conn *agent.Conn, payload []
 		case <-timer.C:
 		}
 	}
+}
+
+/**
+ * @Author liaosiliang1234@126.com
+ * @Function: (s *Server) handleDisconnect(w http.ResponseWriter, r *http.Request)
+ * @Description //校验内部令牌后，按 agent_id 从连接池移除并关闭上游 WebSocket
+ * @Date :2026/10/26 22:43:00
+ * @Param: w 响应写入器；r HTTP 请求，body 为 {"agent_id":"..."}
+ * @return: 无
+ */
+func (s *Server) handleDisconnect(w http.ResponseWriter, r *http.Request) {
+	if !s.authorized(r) {
+		s.logger.Warn("rejected disconnect, internal token mismatch", slog.String("remote", r.RemoteAddr))
+		writeJSON(w, http.StatusUnauthorized, statusBody{OK: false, Error: "unauthorized"})
+		return
+	}
+
+	var req disconnectRequest
+	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBodyBytes))
+	if err := decoder.Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, statusBody{OK: false, Error: "invalid request body"})
+		return
+	}
+	req.AgentID = strings.TrimSpace(req.AgentID)
+	if req.AgentID == "" {
+		writeJSON(w, http.StatusBadRequest, statusBody{OK: false, Error: "agent_id is required"})
+		return
+	}
+
+	if !s.pool.Remove(req.AgentID) {
+		s.logger.Info("disconnect agent not connected", slog.String("agent_id", req.AgentID))
+		writeJSON(w, http.StatusNotFound, statusBody{OK: false, Error: "agent not connected"})
+		return
+	}
+
+	s.logger.Info("disconnect accepted", slog.String("agent_id", req.AgentID))
+	writeJSON(w, http.StatusOK, statusBody{OK: true})
 }
 
 /**
