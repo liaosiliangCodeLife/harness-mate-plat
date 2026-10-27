@@ -45,6 +45,10 @@ const agentTypeLabel = computed(() => {
   }
   return value
 })
+const agentTypeTitle = computed(() => {
+  const value = (isEdit.value ? props.agent?.agent_type : props.agentType)?.trim() ?? ''
+  return value === 'DEEPSEEK_HARNESS' ? 'DeepSeekHarness' : 'Hermes'
+})
 
 // 2.定义隐藏模态窗函数
 const hideModal = () => {
@@ -244,7 +248,7 @@ watch(
   >
     <!-- 顶部标题 -->
     <div class="flex items-center justify-between">
-      <div class="create-agent-title">{{ isEdit ? t('agent.editTitle') : t('agent.createTitle') }} <span class="create-agent-accent">Hermes</span></div>
+      <div class="create-agent-title">{{ isEdit ? t('agent.editTitle') : t('agent.createTitle') }} <span class="create-agent-accent">{{ agentTypeTitle }}</span></div>
       <a-button type="text" class="!text-gray-700" size="small" @click="hideModal">
         <template #icon>
           <icon-close />
