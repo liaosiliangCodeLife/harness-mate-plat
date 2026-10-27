@@ -131,7 +131,7 @@ onUnmounted(() => {
 <template>
   <a-modal
     :visible="props.visible"
-    :width="480"
+    :width="'min(480px, calc(100vw - 32px))'"
     hide-title
     align-center
     modal-class="register-modal"

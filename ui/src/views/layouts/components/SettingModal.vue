@@ -90,7 +90,7 @@ const changeLocale = (value: string | number | boolean) => {
 </script>
 
 <template>
-  <a-modal :visible="visible" hide-title :footer="false" :width="1000" @cancel="handleCancel">
+  <a-modal :visible="visible" hide-title :footer="false" :width="'min(1000px, calc(100vw - 32px))'" @cancel="handleCancel">
     <!-- 关闭按钮 -->
     <a-button
       type="text"
