@@ -62,7 +62,7 @@ ctx.on('agent/assistant-stream', ({agent, frame}))
 | 流式节流 | Hermes 侧控制 | 插件侧控制（`flushIntervalMs` / `flushChars`） |
 | 单条长度上限 | Hermes 侧控制 | `maxReplyChars = 4000`，超出截断 |
 | 文件 | 上传到平台 COS | 同样上传 `/api/open-api/upload-file`，普通文件 ≤16MB、音视频 ≤1GB、每轮最多 4 个 |
-| **`account_id`** | 来自 `chat_id`（真实账号 uuid） | **取自配置 `accountId`（见下节注意事项）** |
+| **`account_id`** | 来自 `chat_id`（真实账号 uuid） | **优先用入站帧的 `account_id`，配置 `accountId` 仅兜底** |
 
 ## 四、配置（`cordis.patch.yml`）
 
@@ -71,7 +71,7 @@ ctx.on('agent/assistant-stream', ({agent, frame}))
 | `gatewayUrl` | 是 | — | 形如 `wss://ws-agent.alltman.com:1443/ws` |
 | `botId` | 是 | — | 智能体在网关上的身份（`bt-` 前缀），**不要复用 Hermes 的** |
 | `botKey` | 是 | — | 签 JWT 的 HMAC 密钥，必须等于网关 `JWT_SECRET` |
-| `accountId` | 是 | `dsh-account` | 业务身份，**必须填平台真实账号 uuid**（见注意事项） |
+| `accountId` | 否（建议填） | `dsh-account` | 业务身份兜底；入站帧缺 `account_id` 时才用，仍建议填真实账号 uuid |
 | `dmPolicy` | 否 | `open` | `open` / `allowlist` / `disabled` |
 | `allowFrom` | 否 | `[]` | `allowlist` 模式下允许的 peer id |
 | `approvalTimeoutMs` | 否 | `300000` | 审批超时按拒绝处理 |
@@ -81,16 +81,16 @@ ctx.on('agent/assistant-stream', ({agent, frame}))
 | `maxReplyChars` | 否 | `4000` | 单条回复上限 |
 | `forwardReasoning` | 否 | `false` | 是否把推理过程发到平台 |
 
-### ⚠️ 注意事项：`accountId` 必须与平台会话一致
+### `accountId` 仅作兜底
 
-插件发回复时 `account_id` 恒取配置值（`index.js` 的 `sendReply`）。而 Hub 是按帧里的 `account_id` 决定往哪个 Redis 频道发的：
+插件出站已优先使用入站帧里的 `account_id`（`sendReply` 第 4 参数）。配置项 `accountId` 只在入站帧没有该字段时兜底。Hub 按帧里的 `account_id` 路由：
 
 ```
 Hub 收到 reply → RouteOf(frame) 取 account_id → PUBLISH stream:<account_id>
 前端订阅                                     → stream:<真实账号 uuid>
 ```
 
-若 `accountId` 填成示例里的 `dsh-account`，帧会发到 `stream:dsh-account`，**前端永远收不到**，而 DSH 日志显示发送成功。部署时务必填平台里该账号的真实 uuid。
+仍建议把配置填成平台真实账号 uuid：万一入站缺字段，不会落到示例值 `dsh-account`（发到错误频道，前端收不到）。
 
 ## 五、安装与排障
 
@@ -100,7 +100,7 @@ Hub 收到 reply → RouteOf(frame) 取 account_id → PUBLISH stream:<account_i
 |---|---|---|
 | 插件不连接 | `gatewayUrl` / `botId` / `botKey` 任一为空 | 补齐三项，重载 DSH |
 | 401 | `botKey` 与网关 `JWT_SECRET` 不一致 | 对齐密钥 |
-| 平台收不到回复 | `accountId` 不是真实账号 uuid | 改成平台账号 uuid |
+| 平台收不到回复 | 出站 `account_id` 与前端订阅不一致（旧版恒用配置；或入站缺字段且配置是示例值） | 升级到 ≥0.2.2；配置仍建议填真实账号 uuid |
 | 消息不触发回复 | `dmPolicy=allowlist` 且 peer 不在 `allowFrom` | 加入 Hub 的 `peer_id` |
 | 重复回复 | 同一 `msg_id` 重复投递 | 插件已按 `msg_id` 去重（最近 1000 条），检查是否两个实例同时连 |
 | 连接反复断 | 同一 `botId` 多实例 | 网关只允许一条连接 |
