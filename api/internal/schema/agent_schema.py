@@ -180,6 +180,7 @@ class GetAgentResp(Schema):
         status 直接读 agent.status 列，不做时间窗计算。
         """
         last_seen_at = inspect(data).info.get("live_last_seen_at")
+        conversation_count = inspect(data).info.get("live_conversation_count")
         return {
             "id": data.id,
             "account_id": data.account_id,
@@ -190,7 +191,7 @@ class GetAgentResp(Schema):
             "agent_type": data.agent_type or "HERMES",
             "agent_info": data.agent_info if data.agent_info is not None else {},
             "status": 1 if data.status == 1 else 0,
-            "conversation_count": data.conversation_count,
+            "conversation_count": conversation_count if conversation_count is not None else data.conversation_count,
             "total_token_count": data.total_token_count,
             "last_seen_at": datetime_to_timestamp(last_seen_at) if last_seen_at else None,
             "gateway_url": self._gateway_text(data, Server.gateway_url),

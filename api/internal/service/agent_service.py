@@ -31,6 +31,9 @@ logger = logging.getLogger(__name__)
 # 读接口把 message 表实时统计挂在实例上的键，schema 只读这个值，不读 agent.last_seen_at 列
 _LIVE_LAST_SEEN_AT = "live_last_seen_at"
 
+# 读接口把 conversation 表实时统计挂在实例上的键，schema 只读这个值，不读 agent.conversation_count 列
+_LIVE_CONVERSATION_COUNT = "live_conversation_count"
+
 # 删除智能体后通知 Hub 断开上游连接的超时秒数
 _HUB_DISCONNECT_TIMEOUT_SECONDS = 2
 
@@ -71,6 +74,7 @@ class AgentService(BaseService):
         paginator = Paginator(db=self.db, req=req)
         agents = paginator.paginate(statement)
         self._attach_live_last_seen(agents)
+        self._attach_live_conversation_count(agents)
         return agents, paginator
 
     def get_agent(self, agent_id: str, account_id: UUID) -> Agent:
@@ -88,6 +92,7 @@ class AgentService(BaseService):
         if agent is None:
             raise NotFoundException("智能体不存在")
         self._attach_live_last_seen([agent])
+        self._attach_live_conversation_count([agent])
         return agent
 
     def create_agent(
@@ -290,6 +295,26 @@ class AgentService(BaseService):
         last_seen_by_agent = {agent_id: last_seen_at for agent_id, last_seen_at in rows}
         for agent in agents:
             inspect(agent).info[_LIVE_LAST_SEEN_AT] = last_seen_by_agent.get(agent.id)
+
+    def _attach_live_conversation_count(self, agents: list[Agent]) -> None:
+        """按 conversation 表统计每个智能体的未删除会话数，挂到实例上供 schema 读取。
+
+        agent.conversation_count 是历史冗余字段，会话增删时没有维护过，
+        读接口一律以会话表实时统计为准。
+        """
+        if not agents:
+            return
+        rows = self.db.session.execute(
+            select(Conversation.agent_id, func.count(Conversation.id))
+            .where(
+                Conversation.agent_id.in_([agent.id for agent in agents]),
+                Conversation.deleted_at.is_(None),
+            )
+            .group_by(Conversation.agent_id)
+        ).all()
+        count_by_agent = {agent_id: count for agent_id, count in rows}
+        for agent in agents:
+            inspect(agent).info[_LIVE_CONVERSATION_COUNT] = count_by_agent.get(agent.id, 0)
 
     def _require_owned_gateway(self, gateway_id: str) -> UUID:
         """确认网关存在。网关是全局数据，不按账号过滤；记录不存在时视为网关不存在"""
