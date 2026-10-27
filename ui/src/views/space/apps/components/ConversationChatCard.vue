@@ -120,8 +120,10 @@ type ReplyPersistState = {
 const props = defineProps({
   agent: { type: Object as PropType<Agent>, required: true },
   conversation: { type: Object as PropType<AgentConversation>, required: true },
+  // 手机端从会话列表点入时直接全屏
+  startFullscreen: { type: Boolean, default: false },
 })
-const emits = defineEmits(['refresh'])
+const emits = defineEmits(['refresh', 'exit-fullscreen'])
 const accountStore = useAccountStore()
 const { handleUpdateAgentConversation } = useUpdateAgentConversation()
 const { handleDeleteAgentConversation } = useDeleteAgentConversation()
@@ -1245,7 +1247,7 @@ const toggleDraftExpanded = () => {
 }
 
 // 全屏只移动当前卡片，不卸载组件，消息和草稿都留在原实例上
-const isFullscreen = ref(false)
+const isFullscreen = ref(Boolean(props.startFullscreen))
 let bodyOverflowBeforeFullscreen = ''
 
 const cardBodyStyle = computed((): CSSProperties => {
@@ -1265,11 +1267,18 @@ const cardBodyStyle = computed((): CSSProperties => {
 })
 
 const toggleFullscreen = () => {
-  isFullscreen.value = !isFullscreen.value
+  if (isFullscreen.value) {
+    exitFullscreen()
+    return
+  }
+  isFullscreen.value = true
 }
 
 const exitFullscreen = () => {
   isFullscreen.value = false
+  if (props.startFullscreen) {
+    emits('exit-fullscreen')
+  }
 }
 
 const onFullscreenKeydown = (event: KeyboardEvent) => {
@@ -1343,11 +1352,14 @@ onUnmounted(() => {
         :style="{ backgroundColor: cardBg }"
         :body-style="cardBodyStyle"
       >
-      <div class="flex h-full min-h-0 flex-1 flex-col overflow-hidden p-3 sm:p-4">
+      <div
+        class="flex h-full min-h-0 flex-1 flex-col overflow-hidden p-2 sm:p-4"
+        :class="isFullscreen ? 'pb-[calc(env(safe-area-inset-bottom)+8px)]' : ''"
+      >
     <!-- 头部：会话标题旁是连接状态，右上角是更多操作 -->
-    <div class="flex items-start justify-between gap-3 mb-3">
+    <div class="mb-2 flex items-start justify-between gap-2 sm:mb-3 sm:gap-3">
       <div class="min-w-0 flex-1">
-        <div class="flex items-center gap-2 min-w-0">
+        <div class="flex min-w-0 items-center gap-2">
           <a-tag
             v-if="conversation.pinned === 1"
             color="orangered"
@@ -1356,13 +1368,13 @@ onUnmounted(() => {
           >
             {{ t('common.pin') }}
           </a-tag>
-          <div class="text-base text-gray-900 font-bold truncate">{{ title }}</div>
+          <div class="truncate text-sm font-bold text-gray-900 sm:text-base">{{ title }}</div>
           <a-tag v-if="agent.status === 1" color="green" size="small" class="flex-shrink-0">
             {{ t('common.online') }}
           </a-tag>
           <a-tag v-else color="gray" size="small" class="flex-shrink-0">{{ t('common.offline') }}</a-tag>
         </div>
-        <div class="flex items-center gap-3 text-[10px] text-gray-400 mt-2">
+        <div class="mt-1 flex items-center gap-3 text-[10px] text-gray-400 sm:mt-2">
           <span class="flex-shrink-0">{{ t('conversation.messageCount', { count: conversation.message_count }) }}</span>
           <span class="flex-shrink-0">Token {{ conversation.total_token_count }}</span>
           <span class="truncate">{{ formattedTime }}</span>
@@ -1378,7 +1390,8 @@ onUnmounted(() => {
           @click.stop="toggleFullscreen"
         >
           <template #icon>
-            <icon-fullscreen-exit v-if="isFullscreen" />
+            <icon-left v-if="startFullscreen && isFullscreen" />
+            <icon-fullscreen-exit v-else-if="isFullscreen" />
             <icon-fullscreen v-else />
           </template>
         </a-button>

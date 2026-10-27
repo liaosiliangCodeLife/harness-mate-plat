@@ -15,6 +15,7 @@
 
   html,
   body {
-    @apply min-h-[600px] min-w-[1200px] h-full w-full;
+    /* 桌面保留 1200 最小宽度（原设计），手机/平板窄屏必须放开，否则整站会被撑到 1200 宽 */
+    @apply min-h-[600px] md:min-w-[1200px] h-full w-full;
   }
 }

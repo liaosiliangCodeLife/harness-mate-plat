@@ -155,7 +155,7 @@ watch(
             <a-tag v-if="agent.status === 1" color="green" size="small">{{ t('common.online') }}</a-tag>
             <a-tag v-else color="gray" size="small">{{ t('common.offline') }}</a-tag>
           </div>
-          <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 min-w-0">
+          <div class="hidden md:flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 min-w-0">
             <template v-if="agentInfoRows.length">
               <span
                 v-for="item in agentInfoRows"

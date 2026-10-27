@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import type { Agent } from '@/models/agent'
 import CreateAgentModal from '@/views/space/apps/components/CreateAgentModal.vue'
@@ -11,6 +11,7 @@ const route = useRoute()
 const router = useRouter()
 const accountStore = useAccountStore()
 const accountAvatarFailed = ref(false)
+const isMobile = ref(false)
 const accountAvatar = computed(() => {
   if (accountAvatarFailed.value) {
     return ''
@@ -28,6 +29,24 @@ const searchWord = ref(route.query?.search_word || '')
 const createAgentModalVisible = ref(false)
 const editingAgent = ref<Agent | null>(null)
 const agentListVersion = ref(0)
+
+let mobileMedia: MediaQueryList | null = null
+const syncIsMobile = () => {
+  isMobile.value = Boolean(mobileMedia?.matches)
+}
+
+onMounted(() => {
+  if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+    mobileMedia = window.matchMedia('(max-width: 767px)')
+    syncIsMobile()
+    mobileMedia.addEventListener('change', syncIsMobile)
+  }
+})
+
+onUnmounted(() => {
+  mobileMedia?.removeEventListener('change', syncIsMobile)
+  mobileMedia = null
+})
 
 // 打开新建弹窗前清掉编辑对象，避免沿用上一次的编辑态
 const openCreateAgent = () => {
@@ -80,14 +99,14 @@ watch(
 <template>
   <!-- 调整边距+隐藏 -->
   <div
-    class="px-3 sm:px-6 flex flex-col overflow-hidden h-full w-full min-h-screen bg-gray-100 bg-cover bg-no-repeat bg-center"
+    class="flex h-full min-h-screen w-full min-w-0 max-w-full flex-col overflow-hidden bg-gray-100 bg-cover bg-center bg-no-repeat px-3 sm:px-6"
     :style="{ backgroundImage: `url(${AssistantAgentBackground})` }"
   >
-    <div class="pt-3 sm:pt-6 sticky top-0 z-20">
+    <div class="sticky top-0 z-20 pt-3 sm:pt-6">
       <!-- 顶层标题 -->
-      <div class="mb-6 flex flex-wrap items-center justify-between gap-2">
+      <div class="mb-4 flex flex-wrap items-center justify-between gap-2 sm:mb-6">
         <!-- 左侧标题 -->
-        <div class="flex items-center gap-2">
+        <div class="flex min-w-0 items-center gap-2">
           <a-avatar
             :size="32"
             class="bg-blue-700"
@@ -97,49 +116,52 @@ watch(
             <span v-if="accountStore.account?.name">{{ accountStore.account.name[0] }}</span>
             <icon-user v-else :size="18" />
           </a-avatar>
-          <div class="text-lg font-medium text-gray-900 sm:text-2xl">{{ t('space.title') }}</div>
+          <div class="truncate text-lg font-medium text-gray-900 sm:text-2xl">{{ t('space.title') }}</div>
         </div>
         <!-- 创建按钮 -->
         <a-button
           v-if="isAgentListPage"
           type="primary"
           class="rounded-lg"
+          :size="isMobile ? 'small' : 'medium'"
           @click="openCreateAgent"
         >
           {{ t('space.createAgent') }}
         </a-button>
       </div>
       <!-- 导航按钮+搜索框 -->
-      <div class="mb-6 flex flex-wrap items-center justify-between gap-2">
-        <!-- 左侧导航 -->
-        <div class="flex items-center gap-2">
-          <router-link
-            to="/space/apps"
-            class="rounded-lg text-gray-700 px-3 h-8 leading-8 hover:bg-gray-200 transition-all"
-            active-class="bg-gray-100"
-          >
-            {{ t('space.hermesAgent') }}
-          </router-link>
-          <router-link
-            to="/space/deepseek-harness"
-            class="rounded-lg text-gray-700 px-3 h-8 leading-8 hover:bg-gray-200 transition-all"
-            active-class="bg-gray-100"
-          >
-            {{ t('space.deepseekAgent') }}
-          </router-link>
+      <div class="mb-4 flex flex-col gap-2 sm:mb-6 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <!-- 左侧导航：窄屏横向滚动 -->
+        <div class="max-w-full overflow-x-auto whitespace-nowrap">
+          <div class="inline-flex items-center gap-2">
+            <router-link
+              to="/space/apps"
+              class="rounded-lg px-3 h-8 text-xs leading-8 text-gray-700 transition-all hover:bg-gray-200 sm:text-sm"
+              active-class="bg-gray-100"
+            >
+              {{ t('space.hermesAgent') }}
+            </router-link>
+            <router-link
+              to="/space/deepseek-harness"
+              class="rounded-lg px-3 h-8 text-xs leading-8 text-gray-700 transition-all hover:bg-gray-200 sm:text-sm"
+              active-class="bg-gray-100"
+            >
+              {{ t('space.deepseekAgent') }}
+            </router-link>
+          </div>
         </div>
         <!-- 右侧搜索，仅智能体列表需要 -->
         <a-input-search
           v-if="isAgentListPage"
           v-model="searchWord"
           :placeholder="t('space.searchPlaceholder')"
-          class="w-full sm:w-[240px] bg-white rounded-lg border-gray-300"
+          class="w-full bg-white rounded-lg border-gray-300 sm:w-[240px]"
           @search="search"
         />
       </div>
     </div>
     <!-- 中间内容 -->
-    <div class="flex-1 min-h-0">
+    <div class="min-h-0 min-w-0 w-full flex-1 p-0 sm:p-0">
       <router-view v-slot="{ Component }">
         <component
           :is="Component"

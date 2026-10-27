@@ -153,33 +153,33 @@ watch(
     class="block h-full w-full scrollbar-w-none overflow-scroll"
     @scroll="handleScroll"
   >
-    <!-- 智能体卡片列表，每行 4 个 -->
-    <a-row :gutter="[20, 20]" class="flex-1">
-      <a-col v-for="agent in agents" :key="agent.id" :span="6">
-        <a-card hoverable class="cursor-pointer rounded-lg" @click="openAgentDetail(agent.id)">
-          <div class="flex items-center gap-3 mb-3">
+    <!-- 智能体卡片列表：手机单列，桌面多列 -->
+    <a-row :gutter="[16, 16]" class="min-w-0 w-full flex-1">
+      <a-col v-for="agent in agents" :key="agent.id" :xs="24" :sm="12" :md="8" :lg="6">
+        <a-card hoverable class="max-w-full cursor-pointer rounded-lg" @click="openAgentDetail(agent.id)">
+          <div class="mb-3 flex items-center gap-3">
             <a-avatar
               :size="40"
               shape="square"
-              class="rounded-lg bg-blue-700 flex-shrink-0"
+              class="max-w-full flex-shrink-0 rounded-lg bg-blue-700"
               :image-url="agent.avatar || undefined"
             >
               <span v-if="agentInitial(agent)">{{ agentInitial(agent) }}</span>
               <icon-robot v-else />
             </a-avatar>
-            <div class="flex flex-1 min-w-0 flex-col gap-0.5">
+            <div class="flex min-w-0 flex-1 flex-col gap-0.5">
               <div class="flex min-w-0 items-center justify-between gap-2">
-                <span class="text-base text-gray-900 font-bold truncate">{{ agent.name }}</span>
+                <span class="truncate text-base font-bold text-gray-900">{{ agent.name }}</span>
                 <a-tag v-if="agent.status === 1" color="green" size="small" class="flex-shrink-0">
                   {{ t('common.online') }}
                 </a-tag>
                 <a-tag v-else color="gray" size="small" class="flex-shrink-0">{{ t('common.offline') }}</a-tag>
               </div>
-              <span class="text-sm font-semibold text-[#165DFF]">@{{ agent.agent_type }}</span>
+              <span class="truncate text-sm font-semibold text-[#165DFF]">@{{ agent.agent_type }}</span>
             </div>
           </div>
           <div class="flex flex-col gap-1 text-xs text-gray-500">
-            <template v-if="agentInfoRows(agent).length">
+            <div v-if="agentInfoRows(agent).length" class="hidden md:block">
               <div
                 v-for="item in agentInfoRows(agent)"
                 :key="item.key"
@@ -188,11 +188,11 @@ watch(
               >
                 {{ item.label }}: {{ item.value }}
               </div>
-            </template>
-            <div v-else>-</div>
-            <div>{{ t('space.conversationCount', { count: agent.conversation_count }) }}</div>
-            <div>Token: {{ agent.total_token_count }}</div>
-            <div>{{ t('space.lastActive', { time: formatTimestamp(agent.last_seen_at) }) }}</div>
+            </div>
+            <div v-else class="hidden md:block">-</div>
+            <div class="truncate">{{ t('space.conversationCount', { count: agent.conversation_count }) }}</div>
+            <div class="truncate">Token: {{ agent.total_token_count }}</div>
+            <div class="truncate">{{ t('space.lastActive', { time: formatTimestamp(agent.last_seen_at) }) }}</div>
           </div>
           <div class="mt-3 flex items-center justify-end" @click.stop>
             <a-dropdown position="br" trigger="click">
