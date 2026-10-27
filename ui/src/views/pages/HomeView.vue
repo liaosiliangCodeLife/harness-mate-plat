@@ -87,7 +87,7 @@ onUnmounted(() => {
 
           <!-- Step 1 · 安装 DeepSeek Harness -->
           <div class="mt-8 min-w-0">
-            <div class="mb-4 text-xl font-bold text-gray-900">Step 1 · 安装 DeepSeek Harness</div>
+            <div class="mb-4 text-xl font-bold text-[#165DFF]">Step 1 · 安装 DeepSeek Harness</div>
             <div class="min-w-0 rounded-lg border border-gray-300 bg-white p-4">
               <ul class="list-disc space-y-1 pl-5 text-sm leading-6 text-gray-700">
                 <li>官网下载 <code class="rounded bg-gray-100 px-1">dsh-latest-windows-x64.exe</code></li>
@@ -183,7 +183,7 @@ onUnmounted(() => {
 
           <!-- Step 2 · 安装 Hermes -->
           <div class="mt-8 min-w-0">
-            <div class="mb-4 text-xl font-bold text-gray-900">Step 2 · 安装 Hermes</div>
+            <div class="mb-4 text-xl font-bold text-[#165DFF]">Step 2 · 安装 Hermes</div>
             <div class="min-w-0 rounded-lg border border-gray-300 bg-white p-4">
               <p class="text-sm leading-6 text-gray-700">
                 {{ t('home.hermesIntro') }}
@@ -268,7 +268,7 @@ onUnmounted(() => {
 
           <!-- Step 3 · 安装插件 -->
           <div class="mt-8 min-w-0">
-            <div class="mb-4 text-xl font-bold text-gray-900">Step 3 · 安装插件（按你用的平台各装各的）</div>
+            <div class="mb-4 text-xl font-bold text-[#165DFF]">Step 3 · 安装插件（按你用的平台各装各的）</div>
 
             <div class="mb-3 text-lg font-medium text-gray-900">Hermes 插件</div>
             <div class="min-w-0 rounded-lg border border-gray-300 bg-white p-4">
@@ -402,7 +402,7 @@ onUnmounted(() => {
               controls
               playsinline
               preload="metadata"
-              class="w-full rounded-lg border border-gray-200 bg-black"
+              class="max-w-full h-auto rounded-lg border border-gray-200 bg-black"
             ></video>
             <p class="mt-3 text-xs text-gray-400">{{ t('home.hermesVideoCaption') }}</p>
           </div>
