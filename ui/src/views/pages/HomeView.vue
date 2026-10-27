@@ -74,7 +74,7 @@ onUnmounted(() => {
     <!-- 中间页面信息 -->
     <div class="w-full h-full min-h-screen">
       <div
-        class="flex flex-col p-6 gap-2 items-stretch justify-start overflow-scroll scrollbar-w-none h-[calc(100%-100px)] min-h-[calc(100vh-100px)]"
+        class="flex flex-col p-4 sm:p-6 gap-2 items-stretch justify-start overflow-scroll scrollbar-w-none h-[calc(100%-100px)] min-h-[calc(100vh-100px)]"
       >
         <div class="w-full min-w-0">
           <div class="text-[32px] font-bold text-[#165DFF] mt-[52px] mb-4">
@@ -98,7 +98,7 @@ onUnmounted(() => {
               <img
                 src="/tutorial/dsh-02-flow.png"
                 alt="DeepSeek Harness 安装流程总览"
-                class="mt-4 w-full rounded-md border border-gray-200"
+                class="mt-4 h-auto max-w-full w-full rounded-md border border-gray-200"
               />
 
               <div class="mb-2 mt-4 text-sm font-medium text-gray-900">系统要求</div>
@@ -139,7 +139,7 @@ onUnmounted(() => {
               <img
                 src="/tutorial/dsh-01-download.png"
                 alt="DeepSeek Harness 下载页"
-                class="mt-4 w-full rounded-md border border-gray-200"
+                class="mt-4 h-auto max-w-full w-full rounded-md border border-gray-200"
               />
 
               <div class="mb-2 mt-4 text-sm font-medium text-gray-900">安装</div>
@@ -158,7 +158,7 @@ onUnmounted(() => {
               <img
                 src="/tutorial/dsh-03-interface.png"
                 alt="DeepSeek Harness 界面说明"
-                class="mt-4 w-full rounded-md border border-gray-200"
+                class="mt-4 h-auto max-w-full w-full rounded-md border border-gray-200"
               />
               <p class="mt-3 text-sm leading-6 text-gray-700">
                 界面说明：左上「应用 / 编辑」是菜单；＋ 新建会话；插件与自动化任务入口；左侧是工作区与会话列表；右上可切换运行模式与查看后台任务；对话区支持「对话 / 轨迹」切换。
@@ -167,7 +167,7 @@ onUnmounted(() => {
               <img
                 src="/tutorial/dsh-04-folders.png"
                 alt="DeepSeek Harness 目录说明"
-                class="mt-4 w-full rounded-md border border-gray-200"
+                class="mt-4 h-auto max-w-full w-full rounded-md border border-gray-200"
               />
               <p class="mt-3 text-sm leading-6 text-gray-700">
                 目录说明：程序目录是安装位置；用户数据在
@@ -205,7 +205,7 @@ onUnmounted(() => {
                 >{{ t('home.winDownload') }}</a>
               </p>
               <div class="mt-3 flex min-w-0 items-start rounded-md bg-gray-100">
-                <pre class="m-0 min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-5 text-gray-800">{{ linuxInstallCommand }}</pre>
+                <pre class="m-0 max-w-full min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-5 text-gray-800">{{ linuxInstallCommand }}</pre>
                 <button
                   type="button"
                   class="m-2 shrink-0 rounded border border-gray-300 bg-white px-2 py-0.5 text-xs text-gray-600 hover:text-gray-900"
@@ -218,7 +218,7 @@ onUnmounted(() => {
                 {{ t('home.windowsShell') }}
               </div>
               <div class="flex min-w-0 items-start rounded-md bg-gray-100">
-                <pre class="m-0 min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-5 text-gray-800">{{ windowsInstallCommand }}</pre>
+                <pre class="m-0 max-w-full min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-5 text-gray-800">{{ windowsInstallCommand }}</pre>
                 <button
                   type="button"
                   class="m-2 shrink-0 rounded border border-gray-300 bg-white px-2 py-0.5 text-xs text-gray-600 hover:text-gray-900"
@@ -231,7 +231,7 @@ onUnmounted(() => {
                 {{ t('home.reloadHint') }}
               </div>
               <div class="flex min-w-0 items-start rounded-md bg-gray-100">
-                <pre class="m-0 min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-5 text-gray-800">{{ reloadShellCommand }}</pre>
+                <pre class="m-0 max-w-full min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-5 text-gray-800">{{ reloadShellCommand }}</pre>
                 <button
                   type="button"
                   class="m-2 shrink-0 rounded border border-gray-300 bg-white px-2 py-0.5 text-xs text-gray-600 hover:text-gray-900"
@@ -261,7 +261,7 @@ onUnmounted(() => {
                 >
                   {{ copiedKey === 'hermes-skill-md' ? t('common.copied') : t('common.copy') }}
                 </button>
-                <pre class="m-0 max-h-[420px] overflow-auto whitespace-pre-wrap break-all p-3 pr-16 font-mono text-xs leading-5 text-gray-800">{{ skillMd }}</pre>
+                <pre class="m-0 max-h-[420px] max-w-full overflow-auto whitespace-pre-wrap break-all p-3 pr-16 font-mono text-xs leading-5 text-gray-800">{{ skillMd }}</pre>
               </div>
             </div>
           </div>
@@ -276,7 +276,7 @@ onUnmounted(() => {
                 {{ t('home.hermesInstallCmd') }}
               </p>
               <div class="mt-2 flex min-w-0 items-start rounded-md bg-gray-100">
-                <pre class="m-0 min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-5 text-gray-800">{{ pluginInstallCommand }}</pre>
+                <pre class="m-0 max-w-full min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-5 text-gray-800">{{ pluginInstallCommand }}</pre>
                 <button
                   type="button"
                   class="m-2 shrink-0 rounded border border-gray-300 bg-white px-2 py-0.5 text-xs text-gray-600 hover:text-gray-900"
@@ -302,7 +302,7 @@ onUnmounted(() => {
                 {{ t('home.dshClone') }}
               </p>
               <div class="mt-2 flex min-w-0 items-start rounded-md bg-gray-100">
-                <pre class="m-0 min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-5 text-gray-800">{{ dshPluginCloneCommand }}</pre>
+                <pre class="m-0 max-w-full min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-5 text-gray-800">{{ dshPluginCloneCommand }}</pre>
                 <button
                   type="button"
                   class="m-2 shrink-0 rounded border border-gray-300 bg-white px-2 py-0.5 text-xs text-gray-600 hover:text-gray-900"
@@ -315,7 +315,7 @@ onUnmounted(() => {
                 {{ t('home.dshMoveMac') }}
               </p>
               <div class="mt-2 flex min-w-0 items-start rounded-md bg-gray-100">
-                <pre class="m-0 min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-5 text-gray-800">{{ dshPluginMoveCommandMac }}</pre>
+                <pre class="m-0 max-w-full min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-5 text-gray-800">{{ dshPluginMoveCommandMac }}</pre>
                 <button
                   type="button"
                   class="m-2 shrink-0 rounded border border-gray-300 bg-white px-2 py-0.5 text-xs text-gray-600 hover:text-gray-900"
@@ -326,7 +326,7 @@ onUnmounted(() => {
               </div>
               <div class="mb-2 mt-4 text-sm font-medium text-gray-900">Windows</div>
               <div class="flex min-w-0 items-start rounded-md bg-gray-100">
-                <pre class="m-0 min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-5 text-gray-800">{{ dshPluginMoveCommandWin }}</pre>
+                <pre class="m-0 max-w-full min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-5 text-gray-800">{{ dshPluginMoveCommandWin }}</pre>
                 <button
                   type="button"
                   class="m-2 shrink-0 rounded border border-gray-300 bg-white px-2 py-0.5 text-xs text-gray-600 hover:text-gray-900"
@@ -340,7 +340,7 @@ onUnmounted(() => {
               </p>
               <div class="mb-2 mt-4 text-sm font-medium text-gray-900">macOS</div>
               <div class="flex min-w-0 items-start rounded-md bg-gray-100">
-                <pre class="m-0 min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-5 text-gray-800">{{ dshPluginInstallCommandMac }}</pre>
+                <pre class="m-0 max-w-full min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-5 text-gray-800">{{ dshPluginInstallCommandMac }}</pre>
                 <button
                   type="button"
                   class="m-2 shrink-0 rounded border border-gray-300 bg-white px-2 py-0.5 text-xs text-gray-600 hover:text-gray-900"
@@ -351,7 +351,7 @@ onUnmounted(() => {
               </div>
               <p class="mt-4 text-sm leading-6 text-gray-700">{{ t('home.oneShot') }}</p>
               <div class="mt-2 flex min-w-0 items-start rounded-md bg-gray-100">
-                <pre class="m-0 min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-5 text-gray-800">{{ dshPluginInstallOnceCommandMac }}</pre>
+                <pre class="m-0 max-w-full min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-5 text-gray-800">{{ dshPluginInstallOnceCommandMac }}</pre>
                 <button
                   type="button"
                   class="m-2 shrink-0 rounded border border-gray-300 bg-white px-2 py-0.5 text-xs text-gray-600 hover:text-gray-900"
@@ -362,7 +362,7 @@ onUnmounted(() => {
               </div>
               <div class="mb-2 mt-4 text-sm font-medium text-gray-900">Windows</div>
               <div class="flex min-w-0 items-start rounded-md bg-gray-100">
-                <pre class="m-0 min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-5 text-gray-800">{{ dshPluginInstallCommandWin }}</pre>
+                <pre class="m-0 max-w-full min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-5 text-gray-800">{{ dshPluginInstallCommandWin }}</pre>
                 <button
                   type="button"
                   class="m-2 shrink-0 rounded border border-gray-300 bg-white px-2 py-0.5 text-xs text-gray-600 hover:text-gray-900"
@@ -373,7 +373,7 @@ onUnmounted(() => {
               </div>
               <p class="mt-4 text-sm leading-6 text-gray-700">{{ t('home.oneShot') }}</p>
               <div class="mt-2 flex min-w-0 items-start rounded-md bg-gray-100">
-                <pre class="m-0 min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-5 text-gray-800">{{ dshPluginInstallOnceCommandWin }}</pre>
+                <pre class="m-0 max-w-full min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-5 text-gray-800">{{ dshPluginInstallOnceCommandWin }}</pre>
                 <button
                   type="button"
                   class="m-2 shrink-0 rounded border border-gray-300 bg-white px-2 py-0.5 text-xs text-gray-600 hover:text-gray-900"

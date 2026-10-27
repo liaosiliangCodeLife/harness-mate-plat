@@ -240,7 +240,7 @@ watch(
 <template>
   <a-modal
     :visible="props.visible"
-    :width="480"
+    :width="'min(480px, calc(100vw - 32px))'"
     hide-title
     :footer="false"
     modal-class="create-agent-modal"

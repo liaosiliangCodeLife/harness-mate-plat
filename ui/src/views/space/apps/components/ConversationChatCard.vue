@@ -1253,7 +1253,8 @@ const cardBodyStyle = computed((): CSSProperties => {
     height: '100%',
     display: 'flex',
     flexDirection: 'column',
-    padding: '16px',
+    // 内边距交给内部 wrapper（p-3 sm:p-4），便于窄屏收紧
+    padding: '0',
     overflow: 'hidden',
     backgroundColor: cardBg.value,
   }
@@ -1332,7 +1333,7 @@ onUnmounted(() => {
     <div
       :class="
         isFullscreen
-          ? 'fixed inset-0 z-[1000] box-border flex h-screen w-screen flex-col overflow-hidden bg-white p-4'
+          ? 'fixed inset-0 z-[1000] box-border flex h-[100dvh] w-screen flex-col overflow-hidden bg-white pt-[calc(env(safe-area-inset-top)+8px)] pr-3 pb-[calc(env(safe-area-inset-bottom)+8px)] pl-3 sm:p-4'
           : 'contents'
       "
     >
@@ -1342,6 +1343,7 @@ onUnmounted(() => {
         :style="{ backgroundColor: cardBg }"
         :body-style="cardBodyStyle"
       >
+      <div class="flex h-full min-h-0 flex-1 flex-col overflow-hidden p-3 sm:p-4">
     <!-- 头部：会话标题旁是连接状态，右上角是更多操作 -->
     <div class="flex items-start justify-between gap-3 mb-3">
       <div class="min-w-0 flex-1">
@@ -1424,7 +1426,7 @@ onUnmounted(() => {
         class="h-full overflow-y-auto pr-1"
         @scroll="onListScroll"
       >
-        <div ref="listTrackRef" class="flex flex-col gap-3">
+        <div ref="listTrackRef" class="flex max-w-full flex-col gap-3">
           <div v-if="historyError" class="text-center text-[10px] text-gray-500">
             {{ t('conversation.historyFailed') }}
             <a-button type="text" size="mini" @click="loadHistory">{{ t('common.retry') }}</a-button>
@@ -1519,10 +1521,10 @@ onUnmounted(() => {
         </template>
       </div>
       <div
-        class="flex flex-col justify-center gap-2 rounded-[24px] border border-gray-200 bg-white px-4 py-2"
+        class="flex flex-col justify-center gap-2 rounded-[24px] border border-gray-200 bg-white px-3 py-2 sm:px-4"
       >
-        <div class="flex items-center gap-2">
-          <div class="draft-input min-w-0 flex-1">
+        <div class="flex flex-wrap items-end gap-1 sm:flex-nowrap sm:items-center sm:gap-2">
+          <div class="draft-input min-w-0 flex-1 basis-[min(100%,12rem)] sm:basis-auto">
             <a-textarea
               :key="draftExpanded ? 'expanded' : 'normal'"
               v-model="draft"
@@ -1533,7 +1535,7 @@ onUnmounted(() => {
               @paste="onPaste"
             />
           </div>
-          <div class="flex flex-shrink-0 items-center">
+          <div class="ml-auto flex flex-shrink-0 items-center sm:ml-0">
             <a-button
               type="text"
               shape="circle"
@@ -1585,10 +1587,11 @@ onUnmounted(() => {
         />
       </div>
     </div>
+      </div>
     <a-modal
       v-model:visible="editVisible"
       :title="t('conversation.editTitle')"
-      :width="480"
+      :width="'min(480px, calc(100vw - 32px))'"
       :ok-text="t('common.save')"
       :cancel-text="t('common.cancel')"
       :on-before-ok="submitEdit"

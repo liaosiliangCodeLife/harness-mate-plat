@@ -101,7 +101,7 @@ watch(
     class="block h-full w-full scrollbar-w-none overflow-scroll"
     @scroll="handleScroll"
   >
-    <div class="p-6">
+    <div class="p-3 sm:p-6">
       <!-- 会话聊天卡片，宽度足够时每行 2 个 -->
       <div
         v-if="agentMatched && agent"

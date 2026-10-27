@@ -10,7 +10,9 @@ const arcoLocale = computed(() => (locale.value === 'en-US' ? arcoEnUS : arcoZhC
 
 <template>
   <a-config-provider :locale="arcoLocale" global>
-    <router-view />
+    <div class="min-h-screen w-full overflow-x-hidden">
+      <router-view />
+    </div>
   </a-config-provider>
 </template>
 

@@ -39,7 +39,7 @@ const timeText = computed(() => {
 </script>
 
 <template>
-  <div :class="isUser ? 'flex flex-row-reverse gap-2' : 'flex gap-2'">
+  <div :class="isUser ? 'flex max-w-full flex-row-reverse gap-2' : 'flex max-w-full gap-2'">
     <a-avatar
       v-if="avatarUrl"
       :size="30"

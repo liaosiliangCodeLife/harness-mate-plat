@@ -80,12 +80,12 @@ watch(
 <template>
   <!-- 调整边距+隐藏 -->
   <div
-    class="px-6 flex flex-col overflow-hidden h-full w-full min-h-screen bg-gray-100 bg-cover bg-no-repeat bg-center"
+    class="px-3 sm:px-6 flex flex-col overflow-hidden h-full w-full min-h-screen bg-gray-100 bg-cover bg-no-repeat bg-center"
     :style="{ backgroundImage: `url(${AssistantAgentBackground})` }"
   >
-    <div class="pt-6 sticky top-0 z-20">
+    <div class="pt-3 sm:pt-6 sticky top-0 z-20">
       <!-- 顶层标题 -->
-      <div class="flex items-center justify-between mb-6">
+      <div class="mb-6 flex flex-wrap items-center justify-between gap-2">
         <!-- 左侧标题 -->
         <div class="flex items-center gap-2">
           <a-avatar
@@ -97,7 +97,7 @@ watch(
             <span v-if="accountStore.account?.name">{{ accountStore.account.name[0] }}</span>
             <icon-user v-else :size="18" />
           </a-avatar>
-          <div class="text-lg font-medium text-gray-900">{{ t('space.title') }}</div>
+          <div class="text-lg font-medium text-gray-900 sm:text-2xl">{{ t('space.title') }}</div>
         </div>
         <!-- 创建按钮 -->
         <a-button
@@ -110,7 +110,7 @@ watch(
         </a-button>
       </div>
       <!-- 导航按钮+搜索框 -->
-      <div class="flex items-center justify-between mb-6">
+      <div class="mb-6 flex flex-wrap items-center justify-between gap-2">
         <!-- 左侧导航 -->
         <div class="flex items-center gap-2">
           <router-link
@@ -133,7 +133,7 @@ watch(
           v-if="isAgentListPage"
           v-model="searchWord"
           :placeholder="t('space.searchPlaceholder')"
-          class="w-[240px] bg-white rounded-lg border-gray-300"
+          class="w-full sm:w-[240px] bg-white rounded-lg border-gray-300"
           @search="search"
         />
       </div>
