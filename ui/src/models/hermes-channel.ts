@@ -1,3 +1,17 @@
+// DSH / Hermes 高危操作审批载荷（reply.data.approval）
+export type HermesApprovalOption = {
+  option_id: string
+  kind?: string
+  name: string
+}
+
+export type HermesApprovalPayload = {
+  approval_id: string
+  title?: string
+  options?: HermesApprovalOption[]
+  expires_in_ms?: number
+}
+
 // Hermes Channel 回复负载
 export type HermesReplyData = {
   text?: string
@@ -11,6 +25,8 @@ export type HermesReplyData = {
   url?: string
   file_name?: string
   media_type?: string
+  // DSH 高危操作审批；网页端渲染审批卡片，回传 `#approval <id> <option_id>`
+  approval?: HermesApprovalPayload
 }
 
 // 网关下发的信封

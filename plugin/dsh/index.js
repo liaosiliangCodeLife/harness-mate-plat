@@ -73,6 +73,7 @@ const TYPE_MESSAGE = 'message';
 const TYPE_REPLY = 'reply';
 const RECONNECT_MIN = 1000;
 const RECONNECT_MAX = 30000;
+const RECONNECT_STABLE_MS = 30000;   // 稳定存活超过此时长才重置 attempt（防互踢风暴）
 
 // ── 文件传输（协议 §5.3 入站 / §6.3 出站）──
 // 出站：本地文件先 POST 上传到网关 open-api（multipart: bot_id/bot_key/thread_id/file），
@@ -116,6 +117,10 @@ export function apply(ctx, config) {
   let attempt = 0;
   let pingTimer = null;
   let disposed = false;
+  let connGen = 0;                   // 连接代际：旧 socket 回调一律忽略
+  let connState = 'idle';            // idle | connecting | open
+  let reconnectTimer = null;
+  let openedAt = 0;                  // 本次 open 时刻；稳定存活后才重置 attempt
   // ⚠️ 教训(实测事故):agents 服务句柄必须缓存在闭包变量里,不能写 `ctx.agents = ...`。
   // cordis 的 context 代理禁止向 ctx 写别的 fiber 已注册的服务名,否则抛
   // "cannot set property \"agents\" in multiple fibers";若发生在异步回调里还会
@@ -726,8 +731,54 @@ export function apply(ctx, config) {
   });
 
   // ───────────────────────── ③ 连网关 ─────────────────────────
+  function clearReconnectTimer() {
+    if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+  }
+
+  /** 丢弃当前 socket：清回调、terminate/close，避免旧代际继续触发重连 */
+  function dropSocket(reason) {
+    const old = ws;
+    ws = null;
+    if (pingTimer) { clearInterval(pingTimer); pingTimer = null; }
+    connState = 'idle';
+    if (!old) return;
+    try {
+      old.onopen = null;
+      old.onmessage = null;
+      old.onclose = null;
+      old.onerror = null;
+      try { old.terminate?.(); } catch { /* 忽略 */ }
+      if (old.readyState !== 3) { try { old.close(); } catch { /* 忽略 */ } }
+    } catch { /* 忽略 */ }
+    trace(`旧连接已丢弃: ${reason}`);
+  }
+
+  /** 指数退避重连；仅「稳定存活」过才重置 attempt，避免互踢 0.5s 风暴 */
+  function scheduleReconnect(ev) {
+    if (disposed) return;
+    clearReconnectTimer();
+    if (openedAt && Date.now() - openedAt > RECONNECT_STABLE_MS) attempt = 0;
+    const delay = Math.min(RECONNECT_MAX, RECONNECT_MIN * 2 ** attempt) * (0.5 + Math.random() / 2);
+    attempt++;
+    warn(`网关断开 code=${ev?.code ?? ''}，${Math.round(delay)}ms 后重连`);
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = null;
+      connect();
+    }, delay);
+  }
+
   function connect() {
     if (disposed) return;
+    if (connState !== 'idle') {
+      trace('connect 被忽略，当前状态=' + connState);
+      return;
+    }
+    clearReconnectTimer();
+    dropSocket('新建连接前');
+    const gen = ++connGen;
+    connState = 'connecting';
+    openedAt = 0;
+
     const url = `${CFG.gatewayUrl}${CFG.gatewayUrl.includes('?') ? '&' : '?'}token=${encodeURIComponent(buildToken())}`;
     log('连接网关', CFG.gatewayUrl.replace(/\/\/[^@]*@/, '//'));
 
@@ -737,45 +788,65 @@ export function apply(ctx, config) {
     } catch (e) {
       trace('WebSocket 构造抛错: ' + e?.message);
       warn('WebSocket 构造失败:', e?.message);
+      connState = 'idle';
+      scheduleReconnect({});
       return;
     }
-    trace(`WebSocket 已构造: readyState=${ws.readyState} (0=CONNECTING,1=OPEN)`);
+    const socket = ws;
+    trace(`WebSocket 已构造: readyState=${socket.readyState} (0=CONNECTING,1=OPEN)`);
 
     // 状态轮询：若一直停在 CONNECTING，说明握手没完成（网络/代理/证书）
     let polls = 0;
     const poll = setInterval(() => {
+      if (gen !== connGen || socket !== ws) { clearInterval(poll); return; }
       polls++;
-      if (!ws || ws.readyState !== 0) { clearInterval(poll); return; }
+      if (socket.readyState !== 0) { clearInterval(poll); return; }
       trace(`握手仍挂起 ${polls * 2}s (readyState=0)`);
-      if (polls >= 15) { clearInterval(poll); trace('握手超时 30s，放弃本次'); try { ws.close(); } catch {} }
+      if (polls >= 15) {
+        clearInterval(poll);
+        trace('握手超时 30s，销毁本次连接');
+        dropSocket('握手超时');
+        scheduleReconnect({ code: 'timeout' });
+      }
     }, 2000);
 
-    ws.onopen = () => {
-      attempt = 0;
+    socket.onopen = () => {
+      if (gen !== connGen || socket !== ws) return;
+      clearInterval(poll);
+      connState = 'open';
+      openedAt = Date.now();
       log(`已连接网关 bot_id=${CFG.botId}`);
       trace('WS onopen —— 网关握手成功');
       // 协议 §10：客户端 ping 间隔 50s
       pingTimer = setInterval(() => {
-        if (ws?.readyState === 1) { try { ws.send(JSON.stringify({ type: 'ping' })); } catch {} }
+        if (socket.readyState === 1) { try { socket.send(JSON.stringify({ type: 'ping' })); } catch {} }
       }, 50000);
     };
 
-    ws.onmessage = (e) => {
+    socket.onmessage = (e) => {
+      if (gen !== connGen || socket !== ws) return;
       trace('WS 收到原始帧: ' + String(e.data).slice(0, 300));
       let raw; try { raw = JSON.parse(e.data); } catch { return warn('网关发来非 JSON'); }
       void onGatewayMessage(raw);
     };
 
-    ws.onclose = (ev) => {
+    socket.onclose = (ev) => {
+      clearInterval(poll);
+      if (gen !== connGen || socket !== ws) {
+        trace('忽略旧代际 onclose');
+        return;
+      }
       trace(`WS onclose code=${ev?.code} reason=${ev?.reason || '(空)'}`);
       if (pingTimer) { clearInterval(pingTimer); pingTimer = null; }
-      if (disposed) return;
-      const delay = Math.min(RECONNECT_MAX, RECONNECT_MIN * 2 ** attempt) * (0.5 + Math.random() / 2);
-      attempt++;
-      warn(`网关断开 code=${ev?.code}，${Math.round(delay)}ms 后重连`);
-      setTimeout(connect, delay);
+      connState = 'idle';
+      ws = null;
+      scheduleReconnect(ev);
     };
-    ws.onerror = () => { trace('WS onerror'); warn('网关连接错误'); };
+    socket.onerror = () => {
+      if (gen !== connGen || socket !== ws) return;
+      trace('WS onerror');
+      warn('网关连接错误');
+    };
   }
 
   // ───────────────────────── 入站处理 ─────────────────────────
@@ -814,6 +885,22 @@ export function apply(ctx, config) {
     lastPeer = from;
 
     log(`收到消息 peer=${from} thread=${threadId}: ${JSON.stringify(text.slice(0, 60))}${inboundFile.url ? ' [含文件]' : ''}`);
+
+    // ★ 审批决策：#approval <approval_id> <option_id>，命中后回调 resolver，不投给 agent
+    const approvalMatch = text.match(/^#approval\s+(\S+)\s+(allow-once|reject-once)\s*$/);
+    if (approvalMatch) {
+      const approvalId = approvalMatch[1];
+      const optionId = approvalMatch[2];
+      const resolver = approvals.get(approvalId);
+      if (!resolver) {
+        warn(`审批决策找不到对应请求: ${approvalId}`);
+        return;
+      }
+      const decision = optionId === 'allow-once' ? 'approve' : 'reject';
+      log(`审批决策 approval_id=${approvalId} decision=${decision}`);
+      resolver(decision);
+      return;
+    }
 
     // ★ 若该会话有等待中的提问（ask_user_question），本条文本消息优先作为回答注入（不进对话队列，
     //   避免与"挂起等待回答中的轮次"在串行队列中相互死锁）。
@@ -947,7 +1034,7 @@ export function apply(ctx, config) {
 
   ctx.on('dispose', () => {
     disposed = true;
-    if (pingTimer) clearInterval(pingTimer);
-    try { ws?.close(); } catch {}
+    clearReconnectTimer();
+    dropSocket('插件卸载');
   });
 }

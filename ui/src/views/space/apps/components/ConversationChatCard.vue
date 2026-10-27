@@ -16,7 +16,7 @@ import { Message, Modal, type Form } from '@arco-design/web-vue'
 import type { Agent } from '@/models/agent'
 import type { AgentConversation } from '@/models/agent-conversation'
 import type { AgentMessage, ChatFile, ChatMessage } from '@/models/agent-message'
-import type { HermesReplyData } from '@/models/hermes-channel'
+import type { HermesApprovalOption, HermesReplyData } from '@/models/hermes-channel'
 import {
   getAgentConversationMessages,
   updateAgentConversation,
@@ -130,6 +130,100 @@ const thinking = ref(false)
 const draft = ref('')
 const attachments = ref<ChatAttachment[]>([])
 const draftExpanded = ref(false)
+
+/** 网页端待处理的高危操作审批（来自 reply.approval） */
+type PendingApproval = {
+  approval_id: string
+  title: string
+  options: HermesApprovalOption[]
+  expires_in_ms: number
+  expiresAt: number
+}
+const pendingApprovals = ref<PendingApproval[]>([])
+const approvalNow = ref(Date.now())
+const decidingApprovalId = ref('')
+let approvalTickTimer: ReturnType<typeof setInterval> | null = null
+
+const stopApprovalTick = () => {
+  if (!approvalTickTimer) {
+    return
+  }
+  clearInterval(approvalTickTimer)
+  approvalTickTimer = null
+}
+
+const ensureApprovalTick = () => {
+  if (approvalTickTimer || pendingApprovals.value.length === 0) {
+    return
+  }
+  approvalTickTimer = setInterval(() => {
+    approvalNow.value = Date.now()
+  }, 1000)
+}
+
+const clearPendingApprovals = () => {
+  pendingApprovals.value = []
+  decidingApprovalId.value = ''
+  stopApprovalTick()
+}
+
+const remainingApprovalSeconds = (item: PendingApproval) =>
+  Math.max(0, Math.ceil((item.expiresAt - approvalNow.value) / 1000))
+
+const isApprovalExpired = (item: PendingApproval) => remainingApprovalSeconds(item) <= 0
+
+const upsertPendingApproval = (payload: NonNullable<HermesReplyData['approval']>) => {
+  const approvalId = String(payload.approval_id ?? '').trim()
+  if (!approvalId) {
+    return
+  }
+  const expiresIn = Number(payload.expires_in_ms) > 0 ? Number(payload.expires_in_ms) : 300000
+  const options = Array.isArray(payload.options)
+    ? payload.options.filter((item) => item && typeof item.option_id === 'string')
+    : []
+  const next: PendingApproval = {
+    approval_id: approvalId,
+    title: String(payload.title ?? '').trim() || '需要授权的操作',
+    options,
+    expires_in_ms: expiresIn,
+    expiresAt: Date.now() + expiresIn,
+  }
+  const idx = pendingApprovals.value.findIndex((item) => item.approval_id === approvalId)
+  if (idx >= 0) {
+    const copy = pendingApprovals.value.slice()
+    copy[idx] = next
+    pendingApprovals.value = copy
+  } else {
+    pendingApprovals.value = [...pendingApprovals.value, next]
+  }
+  approvalNow.value = Date.now()
+  ensureApprovalTick()
+}
+
+const decideApproval = async (item: PendingApproval, optionId: string) => {
+  if (isApprovalExpired(item) || decidingApprovalId.value) {
+    return
+  }
+  decidingApprovalId.value = item.approval_id
+  try {
+    await sendChatText(
+      props.agent.id,
+      props.conversation.thread_id,
+      `#approval ${item.approval_id} ${optionId}`,
+      genUuid(),
+    )
+    pendingApprovals.value = pendingApprovals.value.filter(
+      (entry) => entry.approval_id !== item.approval_id,
+    )
+    if (pendingApprovals.value.length === 0) {
+      stopApprovalTick()
+    }
+  } catch {
+    Message.error(t('conversation.sendFailed'))
+  } finally {
+    decidingApprovalId.value = ''
+  }
+}
 
 /** 聊天输入草稿：按 agent + 会话隔离，刷新/切页后仍可恢复 */
 const draftStorageKey = (agentId: string, conversation: AgentConversation) => {
@@ -585,6 +679,13 @@ const persistHermesReply = (payload: HermesReplyData) => {
 
 // 8.合并网关 reply：增量更新同一条气泡，思考中单独提示，并按帧落库
 const handleReply = (payload: HermesReplyData) => {
+  if (payload.approval?.approval_id) {
+    upsertPendingApproval(payload.approval)
+  }
+  const done = payload.done === true
+  if (done) {
+    clearPendingApprovals()
+  }
   if (!acceptReplies) {
     return
   }
@@ -592,7 +693,6 @@ const handleReply = (payload: HermesReplyData) => {
   const result = reduceHermesReply(messages.value, thinking.value, payload)
   let nextMessages = result.messages.filter((item) => !item.id.startsWith('ws:pending:'))
   let nextThinking = result.thinking
-  const done = payload.done === true
   if (done) {
     nextThinking = false
     nextMessages = nextMessages.flatMap((item) => {
@@ -881,6 +981,7 @@ watch(
     writeDraftStorage(oldKey, draft.value)
     draftPersistEnabled = false
     draft.value = readDraftStorage(newKey)
+    clearPendingApprovals()
     void nextTick(() => {
       draftPersistEnabled = true
     })
@@ -1212,6 +1313,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   flushDraftSave()
+  clearPendingApprovals()
   unsubscribe(streamKey())
   window.removeEventListener('keydown', onFullscreenKeydown)
   listResizeObserver?.disconnect()
@@ -1339,6 +1441,38 @@ onUnmounted(() => {
     </div>
     <!-- 输入区：停止按钮和附件预览在胶囊上方；胶囊内右侧是上传、展开和发送 -->
     <div class="mt-3 flex flex-shrink-0 flex-col gap-2">
+      <div
+        v-if="pendingApprovals.length > 0"
+        class="flex flex-col gap-2"
+      >
+        <div
+          v-for="item in pendingApprovals"
+          :key="item.approval_id"
+          class="rounded-lg border border-orange-200 bg-orange-50 px-3 py-2"
+        >
+          <div class="text-sm font-medium text-orange-800">
+            ⚠️ {{ item.title }}
+          </div>
+          <div class="mt-1 text-[11px] text-orange-600">
+            <template v-if="isApprovalExpired(item)">已过期</template>
+            <template v-else>剩余 {{ remainingApprovalSeconds(item) }} 秒</template>
+          </div>
+          <div class="mt-2 flex flex-wrap gap-2">
+            <a-button
+              v-for="option in item.options"
+              :key="option.option_id"
+              size="mini"
+              :type="option.option_id === 'allow-once' ? 'primary' : 'outline'"
+              :status="option.option_id === 'reject-once' ? 'danger' : undefined"
+              :disabled="isApprovalExpired(item) || decidingApprovalId === item.approval_id"
+              :loading="decidingApprovalId === item.approval_id"
+              @click="decideApproval(item, option.option_id)"
+            >
+              {{ option.name || option.option_id }}
+            </a-button>
+          </div>
+        </div>
+      </div>
       <div v-if="isGenerating" class="relative mb-1.5 flex h-8 justify-center">
         <div class="absolute left-0 top-[50%] translate-y-[-50%] text-[10px] text-[#374151]">
           {{ thinking || !hasReplyContent ? t('common.thinking') : t('common.generatingNow') }}<span class="thinking-dots"><i>.</i><i>.</i><i>.</i></span>
