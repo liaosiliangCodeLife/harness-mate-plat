@@ -130,6 +130,51 @@ const thinking = ref(false)
 const draft = ref('')
 const attachments = ref<ChatAttachment[]>([])
 const draftExpanded = ref(false)
+
+/** 聊天输入草稿：按 agent + 会话隔离，刷新/切页后仍可恢复 */
+const draftStorageKey = (agentId: string, conversation: AgentConversation) => {
+  const session = conversation.thread_id || conversation.id
+  return `harness-mate:chat-draft:${agentId}:${session}`
+}
+const currentDraftKey = () => draftStorageKey(props.agent.id, props.conversation)
+const readDraftStorage = (key: string): string => {
+  try {
+    return localStorage.getItem(key) ?? ''
+  } catch {
+    return ''
+  }
+}
+const writeDraftStorage = (key: string, value: string) => {
+  try {
+    const text = value.trim() ? value : ''
+    if (text) {
+      localStorage.setItem(key, value)
+    } else {
+      localStorage.removeItem(key)
+    }
+  } catch {
+    /* 隐私模式 / 配额异常时忽略 */
+  }
+}
+const removeDraftStorage = (key: string) => {
+  try {
+    localStorage.removeItem(key)
+  } catch {
+    /* 忽略 */
+  }
+}
+let draftSaveTimer: ReturnType<typeof setTimeout> | null = null
+let draftPersistEnabled = true
+const flushDraftSave = () => {
+  if (draftSaveTimer) {
+    clearTimeout(draftSaveTimer)
+    draftSaveTimer = null
+  }
+  if (!draftPersistEnabled) {
+    return
+  }
+  writeDraftStorage(currentDraftKey(), draft.value)
+}
 const uploading = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const editVisible = ref(false)
@@ -736,6 +781,14 @@ const send = async () => {
   const createdAt = Math.floor(Date.now() / 1000)
   acceptReplies = true
   stopRequested = false
+  const draftKey = currentDraftKey()
+  const previousDraft = draft.value
+  // 发送中暂停草稿持久化，避免乐观清空触发删 key；失败时再恢复
+  draftPersistEnabled = false
+  if (draftSaveTimer) {
+    clearTimeout(draftSaveTimer)
+    draftSaveTimer = null
+  }
   draft.value = ''
   attachments.value = []
   messages.value = [
@@ -761,12 +814,14 @@ const send = async () => {
   armGenerationIdle()
   try {
     await sendChatText(props.agent.id, props.conversation.thread_id, text, clientMsgId, files)
+    removeDraftStorage(draftKey)
     armReplyTimeout()
   } catch {
     clearGenerationIdle()
     clearReplyTimeout()
     reportAgentOnlineStatus(0)
     Message.error(t('conversation.sendFailed'))
+    draft.value = previousDraft
     const failId = genUuid()
     messages.value = [
       ...messages.value.filter((item) => item.id !== pendingId),
@@ -781,6 +836,8 @@ const send = async () => {
     ]
     void scrollToBottom(true)
     void persistAssistantMessage(failId, t('conversation.sendFailed'), 2, '', [])
+  } finally {
+    draftPersistEnabled = true
   }
 }
 
@@ -791,6 +848,44 @@ const onInputKeydown = (event: KeyboardEvent) => {
   event.preventDefault()
   send()
 }
+
+// 输入草稿：非空防抖写入 localStorage，清空则删除
+watch(draft, (value) => {
+  if (!draftPersistEnabled) {
+    return
+  }
+  if (draftSaveTimer) {
+    clearTimeout(draftSaveTimer)
+    draftSaveTimer = null
+  }
+  draftSaveTimer = setTimeout(() => {
+    draftSaveTimer = null
+    if (!draftPersistEnabled) {
+      return
+    }
+    writeDraftStorage(currentDraftKey(), value)
+  }, 300)
+})
+
+// 同一卡片实例切换会话时：先落盘旧草稿，再加载新会话草稿
+watch(
+  () => currentDraftKey(),
+  (newKey, oldKey) => {
+    if (!oldKey || oldKey === newKey) {
+      return
+    }
+    if (draftSaveTimer) {
+      clearTimeout(draftSaveTimer)
+      draftSaveTimer = null
+    }
+    writeDraftStorage(oldKey, draft.value)
+    draftPersistEnabled = false
+    draft.value = readDraftStorage(newKey)
+    void nextTick(() => {
+      draftPersistEnabled = true
+    })
+  },
+)
 
 // 8.接口标题跟上本地修改后，改回用列表里的标题
 watch(
@@ -1036,6 +1131,9 @@ watch(isFullscreen, (locked) => {
 const streamKey = () => `${props.conversation.account_id}:${props.conversation.thread_id}`
 
 onMounted(async () => {
+  draftPersistEnabled = false
+  draft.value = readDraftStorage(currentDraftKey())
+  draftPersistEnabled = true
   window.addEventListener('keydown', onFullscreenKeydown)
   const list = listRef.value
   if (list) {
@@ -1054,6 +1152,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  flushDraftSave()
   unsubscribe(streamKey())
   window.removeEventListener('keydown', onFullscreenKeydown)
   listResizeObserver?.disconnect()
