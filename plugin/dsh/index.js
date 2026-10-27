@@ -691,6 +691,8 @@ export function apply(ctx, config) {
   ctx.on('approval/request', (request, next) => {
     const agent = request?.agent;
     const round = agent ? ownedAgents.get(agent) : undefined;
+    // 诊断留痕：DSH 的 GUI 应答者若排在前面会先吃掉请求，所以本监听器必须 prepend 到最前
+    trace(`approval/request 触发: hasAgent=${Boolean(agent)} matched=${Boolean(round)} title=${request?.title ?? request?.toolName ?? ''}`);
     if (!round) return next();                           // 非本插件会话 → 交给下游（GUI 弹窗）
 
     const approvalId = `a-${approvalSeq++}`;
@@ -700,9 +702,8 @@ export function apply(ctx, config) {
     round.stream.push(`\n⚠️ 需要授权：${title}\n`);
 
     // 用 reply 协议推给 App（status 之外的自定义载荷，客户端可识别 approval 字段）
+    // 只带 approval：不带 text / message_id，避免覆盖同一条主回复气泡
     sendReply(round.peerSession, round.threadId, {
-      text: `需要授权：${title}`,
-      message_id: round.messageId,
       approval: {
         approval_id: approvalId,
         title,
@@ -728,7 +729,7 @@ export function apply(ctx, config) {
         resolve(decision === 'approve' ? 'allowed-once' : 'rejected');
       });
     });
-  });
+  }, { prepend: true });   // 必须排在 DSH GUI 应答者之前，否则请求会被 GUI 先吃掉
 
   // ───────────────────────── ③ 连网关 ─────────────────────────
   function clearReconnectTimer() {
