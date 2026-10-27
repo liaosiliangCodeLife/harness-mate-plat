@@ -72,9 +72,9 @@ onUnmounted(() => {
     :style="{ backgroundImage: `url(${AssistantAgentBackground})` }"
   >
     <!-- 中间页面信息 -->
-    <div class="w-[600px] h-full min-h-screen mx-auto">
+    <div class="w-full h-full min-h-screen">
       <div
-        class="flex flex-col p-6 gap-2 items-center justify-start overflow-scroll scrollbar-w-none h-[calc(100%-100px)] min-h-[calc(100vh-100px)]"
+        class="flex flex-col p-6 gap-2 items-stretch justify-start overflow-scroll scrollbar-w-none h-[calc(100%-100px)] min-h-[calc(100vh-100px)]"
       >
         <div class="w-full min-w-0">
           <div class="text-[32px] font-bold text-[#165DFF] mt-[52px] mb-4">
