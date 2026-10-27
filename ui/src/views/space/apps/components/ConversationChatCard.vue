@@ -1022,31 +1022,26 @@ const buildOutgoingText = () => {
   return `${text}\n${links.join('\n')}`
 }
 
-// 15.图片走图片接口，其它允许的文件走文件接口，成功后放进附件列表，不写入输入框
-const onFileChange = async (event: Event) => {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  input.value = ''
-  if (!file || uploading.value) {
-    return
+// 15.校验 + 上传单个文件进附件列表；图片走图片接口，其它走文件接口
+const uploadOneFile = async (file: File): Promise<boolean> => {
+  if (uploading.value) {
+    return false
   }
   if (attachments.value.length >= MAX_ATTACHMENT_COUNT) {
     Message.error(t('conversation.imageLimit'))
-    return
+    return false
   }
   const extension = fileExtension(file.name)
   const isImage = IMAGE_EXTENSIONS.has(extension)
   const isArchive = ARCHIVE_EXTENSIONS.has(extension)
   if (!isImage && !DOCUMENT_EXTENSIONS.has(extension) && !isArchive) {
-    Message.error(
-      t('conversation.fileTypes'),
-    )
-    return
+    Message.error(t('conversation.fileTypes'))
+    return false
   }
   const maxBytes = isArchive ? MAX_ARCHIVE_UPLOAD_BYTES : MAX_UPLOAD_BYTES
   if (file.size > maxBytes) {
     Message.error(isArchive ? t('conversation.archiveTooLarge') : t('conversation.fileTooLarge'))
-    return
+    return false
   }
   uploading.value = true
   try {
@@ -1064,7 +1059,7 @@ const onFileChange = async (event: Event) => {
     }
     if (!url) {
       Message.error(t('conversation.uploadFailed'))
-      return
+      return false
     }
     attachments.value.push({
       name: fileName,
@@ -1072,10 +1067,74 @@ const onFileChange = async (event: Event) => {
       isImage,
       size: file.size,
     })
+    return true
   } catch (error: unknown) {
     Message.error(readUploadError(error))
+    return false
   } finally {
     uploading.value = false
+  }
+}
+
+const onFileChange = async (event: Event) => {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file) {
+    return
+  }
+  await uploadOneFile(file)
+}
+
+/** 粘贴文件/图片：有文件则上传成附件，无文件不拦截（普通粘贴文字不变） */
+const onPaste = async (event: ClipboardEvent) => {
+  try {
+    const data = event.clipboardData
+    if (!data) {
+      return
+    }
+    const seen = new Set<string>()
+    const files: File[] = []
+    const pushUnique = (file: File | null) => {
+      if (!file) {
+        return
+      }
+      const key = `${file.name}:${file.size}`
+      if (seen.has(key)) {
+        return
+      }
+      seen.add(key)
+      files.push(file)
+    }
+    if (data.files?.length) {
+      for (const file of Array.from(data.files)) {
+        pushUnique(file)
+      }
+    }
+    if (data.items?.length) {
+      for (const item of Array.from(data.items)) {
+        if (item.kind !== 'file') {
+          continue
+        }
+        pushUnique(item.getAsFile())
+      }
+    }
+    if (files.length === 0) {
+      return
+    }
+    event.preventDefault()
+    for (const file of files) {
+      if (attachments.value.length >= MAX_ATTACHMENT_COUNT) {
+        Message.error(t('conversation.imageLimit'))
+        break
+      }
+      if (uploading.value) {
+        break
+      }
+      await uploadOneFile(file)
+    }
+  } catch {
+    /* 粘贴上传失败不抛到控制台外 */
   }
 }
 
@@ -1337,6 +1396,7 @@ onUnmounted(() => {
               :placeholder="t('conversation.inputPlaceholder')"
               :disabled="inputDisabled"
               @keydown="onInputKeydown"
+              @paste="onPaste"
             />
           </div>
           <div class="flex flex-shrink-0 items-center">
