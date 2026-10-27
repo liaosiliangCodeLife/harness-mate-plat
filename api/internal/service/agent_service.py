@@ -66,7 +66,7 @@ class AgentService(BaseService):
             statement = statement.where(Agent.name.ilike(f"%{escaped}%", escape="\\"))
         if req.agent_type.data:
             statement = statement.where(Agent.agent_type == req.agent_type.data.strip().upper())
-        statement = statement.order_by(Agent.created_at.desc(), Agent.id.desc())
+        statement = statement.order_by(Agent.created_at.asc(), Agent.id.asc())
 
         paginator = Paginator(db=self.db, req=req)
         agents = paginator.paginate(statement)
