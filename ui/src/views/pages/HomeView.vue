@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref } from 'vue'
 import AssistantAgentBackground from '@/assets/images/assistant-agent-background.png'
+import skillMd from '@/assets/hermes-windows-install.md?raw'
 import { APP_VERSION } from '@/utils/version'
 import { t } from '@/locales'
 
@@ -15,20 +16,8 @@ const hermesDocsUrl =
   'https://hermes-agent.nousresearch.com/docs/getting-started/installation#without-hermes-desktop'
 const pluginInstallCommand =
   'hermes plugins install liaosiliangCodeLife/harness-mate-plat/plugin/hermes --yes-deps --enable'
-const pluginEnvCommand = `cat >> ~/.hermes/.env <<'EOF'
-HARNESS_MATE_BOT_ID=<bot_id>
-HARNESS_MATE_BOT_KEY=<bot_key>
-HARNESS_MATE_DM_POLICY=open
-HARNESS_MATE_ALLOW_ALL_DEVICES=1
-EOF`
-const pluginRestartCommand = 'hermes gateway restart'
 const pluginInstallDocUrl =
   'https://github.com/liaosiliangCodeLife/harness-mate-plat/blob/main/plugin/hermes/INSTALL.md'
-const dshSiteUrl = 'https://www.deepseek.com/harness'
-const dshGithubUrl = 'https://github.com/deepseek-ai/deepseek-harness'
-const dshInstallCommand = 'npm install -g @deepseek-ai/dsh'
-const dshNpxCommand = 'npx @deepseek-ai/dsh web'
-const dshWebCommand = 'dsh web'
 const dshPluginCloneCommand =
   'git clone --depth 1 https://github.com/liaosiliangCodeLife/harness-mate-plat.git'
 const dshPluginMoveCommandMac =
@@ -95,21 +84,106 @@ onUnmounted(() => {
           <div class="text-base text-gray-700">
             {{ t('home.intro') }}
           </div>
-          <div class="mt-8">
-            <div class="mb-3 text-lg font-medium text-gray-900">{{ t('home.videos') }}</div>
-            <video
-              :src="t('home.hermesVideoUrl')"
-              controls
-              playsinline
-              preload="metadata"
-              class="w-full rounded-lg border border-gray-200 bg-black"
-            ></video>
-            <p class="mt-3 text-xs text-gray-400">{{ t('home.hermesVideoCaption') }}</p>
-          </div>
-          <a-tabs class="mt-8" default-active-key="hermes">
-            <a-tab-pane key="hermes" :title="t('home.hermesTab')">
+
+          <!-- Step 1 · 安装 DeepSeek Harness -->
           <div class="mt-8 min-w-0">
-            <div class="mb-3 text-lg font-medium text-gray-900">{{ t('home.installHermes') }}</div>
+            <div class="mb-4 text-xl font-bold text-gray-900">Step 1 · 安装 DeepSeek Harness</div>
+            <div class="min-w-0 rounded-lg border border-gray-300 bg-white p-4">
+              <ul class="list-disc space-y-1 pl-5 text-sm leading-6 text-gray-700">
+                <li>官网下载 <code class="rounded bg-gray-100 px-1">dsh-latest-windows-x64.exe</code></li>
+                <li>双击安装，不需要管理员权限</li>
+                <li>打开后登录账号，新建会话即可开始用</li>
+              </ul>
+
+              <img
+                src="/tutorial/dsh-02-flow.png"
+                alt="DeepSeek Harness 安装流程总览"
+                class="mt-4 w-full rounded-md border border-gray-200"
+              />
+
+              <div class="mb-2 mt-4 text-sm font-medium text-gray-900">系统要求</div>
+              <ul class="list-disc space-y-1 pl-5 text-sm leading-6 text-gray-700">
+                <li>Windows 10+ x64；macOS 13+ Apple 芯片</li>
+                <li>磁盘约 1.0 GB（用户数据另计）；安装包约 276 MB</li>
+              </ul>
+
+              <div class="mb-2 mt-4 text-sm font-medium text-gray-900">下载</div>
+              <p class="text-sm leading-6 text-gray-700">
+                下载页：
+                <a
+                  class="text-blue-600 hover:underline"
+                  href="https://www.deepseek.com/download/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >https://www.deepseek.com/download/</a>
+              </p>
+              <p class="mt-1 text-sm leading-6 text-gray-700">
+                Windows 直链：
+                <a
+                  class="break-all text-blue-600 hover:underline"
+                  href="https://download.deepseek.com/desktop/dsh-latest-windows-x64.exe"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >https://download.deepseek.com/desktop/dsh-latest-windows-x64.exe</a>
+              </p>
+              <p class="mt-1 text-sm leading-6 text-gray-700">
+                macOS 直链：
+                <a
+                  class="break-all text-blue-600 hover:underline"
+                  href="https://download.deepseek.com/desktop/dsh-latest-macos-arm64.dmg"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >https://download.deepseek.com/desktop/dsh-latest-macos-arm64.dmg</a>
+              </p>
+
+              <img
+                src="/tutorial/dsh-01-download.png"
+                alt="DeepSeek Harness 下载页"
+                class="mt-4 w-full rounded-md border border-gray-200"
+              />
+
+              <div class="mb-2 mt-4 text-sm font-medium text-gray-900">安装</div>
+              <p class="text-sm leading-6 text-gray-700">
+                双击安装包 → 若出现 SmartScreen，点「更多信息 → 仍要运行」→ 一路下一步。默认目录：
+                <code class="rounded bg-gray-100 px-1 break-all">C:\Users\&lt;用户名&gt;\AppData\Local\Programs\DeepSeek Harness</code>
+              </p>
+
+              <div class="mb-2 mt-4 text-sm font-medium text-gray-900">首次启动</div>
+              <p class="text-sm leading-6 text-gray-700">
+                登录 DeepSeek 账号。凭据保存在
+                <code class="rounded bg-gray-100 px-1 break-all">C:\Users\&lt;用户名&gt;\.dsh\.credentials.yaml</code>
+                ，请勿外传。
+              </p>
+
+              <img
+                src="/tutorial/dsh-03-interface.png"
+                alt="DeepSeek Harness 界面说明"
+                class="mt-4 w-full rounded-md border border-gray-200"
+              />
+              <p class="mt-3 text-sm leading-6 text-gray-700">
+                界面说明：左上「应用 / 编辑」是菜单；＋ 新建会话；插件与自动化任务入口；左侧是工作区与会话列表；右上可切换运行模式与查看后台任务；对话区支持「对话 / 轨迹」切换。
+              </p>
+
+              <img
+                src="/tutorial/dsh-04-folders.png"
+                alt="DeepSeek Harness 目录说明"
+                class="mt-4 w-full rounded-md border border-gray-200"
+              />
+              <p class="mt-3 text-sm leading-6 text-gray-700">
+                目录说明：程序目录是安装位置；用户数据在
+                <code class="rounded bg-gray-100 px-1">%USERPROFILE%\.dsh</code>
+                （卸载不会删除）。
+              </p>
+
+              <p class="mt-4 text-xs text-gray-500">
+                更新请用应用内置自动更新；卸载在 Windows 设置 → 应用里操作。
+              </p>
+            </div>
+          </div>
+
+          <!-- Step 2 · 安装 Hermes -->
+          <div class="mt-8 min-w-0">
+            <div class="mb-4 text-xl font-bold text-gray-900">Step 2 · 安装 Hermes</div>
             <div class="min-w-0 rounded-lg border border-gray-300 bg-white p-4">
               <p class="text-sm leading-6 text-gray-700">
                 {{ t('home.hermesIntro') }}
@@ -172,15 +246,33 @@ onUnmounted(() => {
                 target="_blank"
                 rel="noopener noreferrer"
               >{{ t('home.hermesDocs') }}</a>
+
+              <div class="mb-2 mt-6 text-sm font-medium text-gray-900">用 SKILL.md 安装（推荐）</div>
+              <p class="text-sm leading-6 text-gray-700">
+                把下面这段 SKILL.md 全文复制，保存成 SKILL.md 交给 AI 助手（Cursor / Claude / Hermes 都行），它会按里面的步骤装好 Hermes 并处理国内网络、代理端口、Windows 执行策略等坑；装了 Hermes 的用户也可以直接
+                <code class="rounded bg-gray-100 px-1">hermes skills install &lt;目录&gt;</code>
+                安装成技能。
+              </p>
+              <div class="relative mt-3 min-w-0 rounded-md bg-gray-100">
+                <button
+                  type="button"
+                  class="absolute right-2 top-2 z-10 rounded border border-gray-300 bg-white px-2 py-0.5 text-xs text-gray-600 hover:text-gray-900"
+                  @click="copyCommand('hermes-skill-md', skillMd)"
+                >
+                  {{ copiedKey === 'hermes-skill-md' ? t('common.copied') : t('common.copy') }}
+                </button>
+                <pre class="m-0 max-h-[420px] overflow-auto whitespace-pre-wrap break-all p-3 pr-16 font-mono text-xs leading-5 text-gray-800">{{ skillMd }}</pre>
+              </div>
             </div>
           </div>
+
+          <!-- Step 3 · 安装插件 -->
           <div class="mt-8 min-w-0">
-            <div class="mb-3 text-lg font-medium text-gray-900">{{ t('home.installPlugin') }}</div>
+            <div class="mb-4 text-xl font-bold text-gray-900">Step 3 · 安装插件（按你用的平台各装各的）</div>
+
+            <div class="mb-3 text-lg font-medium text-gray-900">Hermes 插件</div>
             <div class="min-w-0 rounded-lg border border-gray-300 bg-white p-4">
               <p class="text-sm leading-6 text-gray-700">
-                {{ t('home.hermesIdentity') }}
-              </p>
-              <p class="mt-4 text-sm leading-6 text-gray-700">
                 {{ t('home.hermesInstallCmd') }}
               </p>
               <div class="mt-2 flex min-w-0 items-start rounded-md bg-gray-100">
@@ -193,35 +285,6 @@ onUnmounted(() => {
                   {{ copiedKey === 'plugin-install' ? t('common.copied') : t('common.copy') }}
                 </button>
               </div>
-              <p class="mt-4 text-sm leading-6 text-gray-700">
-                {{ t('home.hermesEnv') }}
-              </p>
-              <div class="mt-2 flex min-w-0 items-start rounded-md bg-gray-100">
-                <pre class="m-0 min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-5 text-gray-800">{{ pluginEnvCommand }}</pre>
-                <button
-                  type="button"
-                  class="m-2 shrink-0 rounded border border-gray-300 bg-white px-2 py-0.5 text-xs text-gray-600 hover:text-gray-900"
-                  @click="copyCommand('plugin-env', pluginEnvCommand)"
-                >
-                  {{ copiedKey === 'plugin-env' ? t('common.copied') : t('common.copy') }}
-                </button>
-              </div>
-              <p class="mt-4 text-sm leading-6 text-gray-700">
-                {{ t('home.hermesGateway') }}
-              </p>
-              <p class="mt-4 text-sm leading-6 text-gray-700">
-                {{ t('home.hermesVerify') }}
-              </p>
-              <div class="mt-2 flex min-w-0 items-start rounded-md bg-gray-100">
-                <pre class="m-0 min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-5 text-gray-800">{{ pluginRestartCommand }}</pre>
-                <button
-                  type="button"
-                  class="m-2 shrink-0 rounded border border-gray-300 bg-white px-2 py-0.5 text-xs text-gray-600 hover:text-gray-900"
-                  @click="copyCommand('plugin-restart', pluginRestartCommand)"
-                >
-                  {{ copiedKey === 'plugin-restart' ? t('common.copied') : t('common.copy') }}
-                </button>
-              </div>
               <a
                 class="mt-4 inline-block text-xs text-gray-500 hover:text-gray-700"
                 :href="pluginInstallDocUrl"
@@ -229,82 +292,8 @@ onUnmounted(() => {
                 rel="noopener noreferrer"
               >{{ t('home.hermesPluginDocs') }}</a>
             </div>
-          </div>
-            </a-tab-pane>
-            <a-tab-pane key="deepseek" :title="t('home.deepseekTab')">
-          <div class="mt-8 min-w-0">
-            <div class="mb-3 text-lg font-medium text-gray-900">{{ t('home.installDeepseek') }}</div>
-            <div class="min-w-0 rounded-lg border border-gray-300 bg-white p-4">
-              <p class="text-sm leading-6 text-gray-700">
-                {{ t('home.deepseekIntro') }}
-              </p>
-              <p class="mt-2 text-xs text-gray-500">
-                <a
-                  class="text-blue-600 hover:underline"
-                  :href="dshSiteUrl"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >{{ t('home.officialSite') }}{{ dshSiteUrl }}</a>
-                ·
-                <a
-                  class="text-blue-600 hover:underline"
-                  :href="dshGithubUrl"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >{{ t('home.githubLabel') }}{{ dshGithubUrl }}</a>
-              </p>
-              <p class="mt-4 text-sm leading-6 text-gray-700">
-                {{ t('home.dshInstall') }}
-              </p>
-              <div class="mt-2 flex min-w-0 items-start rounded-md bg-gray-100">
-                <pre class="m-0 min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-5 text-gray-800">{{ dshInstallCommand }}</pre>
-                <button
-                  type="button"
-                  class="m-2 shrink-0 rounded border border-gray-300 bg-white px-2 py-0.5 text-xs text-gray-600 hover:text-gray-900"
-                  @click="copyCommand('dsh-install', dshInstallCommand)"
-                >
-                  {{ copiedKey === 'dsh-install' ? t('common.copied') : t('common.copy') }}
-                </button>
-              </div>
-              <p class="mt-4 text-sm leading-6 text-gray-700">
-                {{ t('home.dshNpx') }}
-              </p>
-              <div class="mt-2 flex min-w-0 items-start rounded-md bg-gray-100">
-                <pre class="m-0 min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-5 text-gray-800">{{ dshNpxCommand }}</pre>
-                <button
-                  type="button"
-                  class="m-2 shrink-0 rounded border border-gray-300 bg-white px-2 py-0.5 text-xs text-gray-600 hover:text-gray-900"
-                  @click="copyCommand('dsh-npx', dshNpxCommand)"
-                >
-                  {{ copiedKey === 'dsh-npx' ? t('common.copied') : t('common.copy') }}
-                </button>
-              </div>
-              <p class="mt-4 text-sm leading-6 text-gray-700">
-                {{ t('home.dshWeb') }}
-              </p>
-              <div class="mt-2 flex min-w-0 items-start rounded-md bg-gray-100">
-                <pre class="m-0 min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap break-all p-3 font-mono text-xs leading-5 text-gray-800">{{ dshWebCommand }}</pre>
-                <button
-                  type="button"
-                  class="m-2 shrink-0 rounded border border-gray-300 bg-white px-2 py-0.5 text-xs text-gray-600 hover:text-gray-900"
-                  @click="copyCommand('dsh-web', dshWebCommand)"
-                >
-                  {{ copiedKey === 'dsh-web' ? t('common.copied') : t('common.copy') }}
-                </button>
-              </div>
-              <p class="mt-4 text-sm leading-6 text-gray-700">
-                {{ t('home.dshDesktop') }}
-              </p>
-              <a
-                class="mt-4 inline-block text-xs text-gray-500 hover:text-gray-700"
-                :href="dshGithubUrl"
-                target="_blank"
-                rel="noopener noreferrer"
-              >{{ t('home.dshDocs') }}</a>
-            </div>
-          </div>
-          <div class="mt-8 min-w-0">
-            <div class="mb-3 text-lg font-medium text-gray-900">{{ t('home.installDshPlugin') }}</div>
+
+            <div class="mb-3 mt-6 text-lg font-medium text-gray-900">DeepSeek Harness 插件</div>
             <div class="min-w-0 rounded-lg border border-gray-300 bg-white p-4">
               <p class="text-sm leading-6 text-gray-700">
                 {{ t('home.dshIdentity') }}
@@ -404,15 +393,18 @@ onUnmounted(() => {
               >{{ t('home.dshPluginDocs') }}</a>
             </div>
           </div>
-            </a-tab-pane>
-          </a-tabs>
+
+          <!-- 视频教程（最底部） -->
           <div class="mt-8">
-            <div class="mb-3 text-lg font-medium text-gray-900">{{ t('home.guide') }}</div>
-            <div
-              class="flex h-32 items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50"
-            >
-              <span class="text-xs text-gray-400">{{ t('home.comingSoon') }}</span>
-            </div>
+            <div class="mb-3 text-lg font-medium text-gray-900">{{ t('home.videos') }}</div>
+            <video
+              :src="t('home.hermesVideoUrl')"
+              controls
+              playsinline
+              preload="metadata"
+              class="w-full rounded-lg border border-gray-200 bg-black"
+            ></video>
+            <p class="mt-3 text-xs text-gray-400">{{ t('home.hermesVideoCaption') }}</p>
           </div>
         </div>
       </div>
