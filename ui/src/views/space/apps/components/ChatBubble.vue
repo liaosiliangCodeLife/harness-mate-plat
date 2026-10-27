@@ -145,7 +145,8 @@ const timeText = computed(() => {
 
 .chat-player {
   display: block;
-  width: 100%;
+  /* 音频/视频元素在 shrink-to-fit 的气泡里用 width:100% 会算成 0，必须给固定宽度再限上限 */
+  width: 280px;
   max-width: 100%;
   border-radius: 0.5rem;
 }
