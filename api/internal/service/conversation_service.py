@@ -122,8 +122,8 @@ class ConversationService(BaseService):
             statement = statement.where(Conversation.title.ilike(f"%{escaped}%", escape="\\"))
         statement = statement.order_by(
             Conversation.pinned.desc(),
-            Conversation.created_at.desc(),
-            Conversation.id.desc(),
+            Conversation.created_at.asc(),
+            Conversation.id.asc(),
         )
 
         paginator = Paginator(db=self.db, req=req)
@@ -168,12 +168,11 @@ class ConversationService(BaseService):
             self,
             account_id: UUID,
             agent_id: UUID,
-            agent_peer_id: str,
             thread_id: str,
             title: str,
             conversation_info: dict,
     ) -> Conversation:
-        """在指定智能体下创建会话。主键由服务端生成，ws_session_id 为 peer_id 加会话 id 十六进制前 16 位；thread_id 在同一账号下唯一（含已软删除记录）"""
+        """在指定智能体下创建会话。主键由服务端生成；thread_id 在同一账号下唯一（含已软删除记录）"""
         existed = self.db.session.query(Conversation.id).filter(
             Conversation.account_id == account_id,
             Conversation.thread_id == thread_id,
@@ -189,7 +188,6 @@ class ConversationService(BaseService):
                 account_id=account_id,
                 agent_id=agent_id,
                 thread_id=thread_id,
-                ws_session_id=f"{agent_peer_id or ''}-{cid.hex[:16]}",
                 title=title or "",
                 conversation_info=conversation_info if isinstance(conversation_info, dict) else {},
             )

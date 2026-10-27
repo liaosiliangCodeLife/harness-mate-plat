@@ -31,9 +31,20 @@ const pageLoading = computed(
     (getConversationsLoading.value && conversations.value.length === 0),
 )
 
-// 2.置顶会话排在前面，同组内保持接口返回顺序
+// 2.置顶在前，其余按创建时间从早到晚（新建出现在最后）
 const sortedConversations = computed(() => {
-  return [...conversations.value].sort((left, right) => right.pinned - left.pinned)
+  return [...conversations.value].sort((left, right) => {
+    const pinnedDiff = right.pinned - left.pinned
+    if (pinnedDiff !== 0) {
+      return pinnedDiff
+    }
+    const leftCreated = Number(left.created_at) || 0
+    const rightCreated = Number(right.created_at) || 0
+    if (leftCreated !== rightCreated) {
+      return leftCreated - rightCreated
+    }
+    return String(left.id).localeCompare(String(right.id))
+  })
 })
 
 // 3.滚动到底加载下一页
