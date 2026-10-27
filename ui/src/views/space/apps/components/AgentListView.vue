@@ -167,15 +167,15 @@ watch(
               <span v-if="agentInitial(agent)">{{ agentInitial(agent) }}</span>
               <icon-robot v-else />
             </a-avatar>
-            <div class="flex flex-1 min-w-0 items-center justify-between gap-2">
-              <div class="flex min-w-0 items-center gap-1">
+            <div class="flex flex-1 min-w-0 flex-col gap-0.5">
+              <div class="flex min-w-0 items-center justify-between gap-2">
                 <span class="text-base text-gray-900 font-bold truncate">{{ agent.name }}</span>
-                <span class="flex-shrink-0 text-sm font-semibold text-[#165DFF]">@{{ agent.agent_type }}</span>
+                <a-tag v-if="agent.status === 1" color="green" size="small" class="flex-shrink-0">
+                  {{ t('common.online') }}
+                </a-tag>
+                <a-tag v-else color="gray" size="small" class="flex-shrink-0">{{ t('common.offline') }}</a-tag>
               </div>
-              <a-tag v-if="agent.status === 1" color="green" size="small" class="flex-shrink-0">
-                {{ t('common.online') }}
-              </a-tag>
-              <a-tag v-else color="gray" size="small" class="flex-shrink-0">{{ t('common.offline') }}</a-tag>
+              <span class="text-sm font-semibold text-[#165DFF]">@{{ agent.agent_type }}</span>
             </div>
           </div>
           <div class="flex flex-col gap-1 text-xs text-gray-500">
