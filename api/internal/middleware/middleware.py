@@ -20,6 +20,8 @@ from internal.service import JwtService, AccountService
 _SHARE_SCOPE_RULES = (
     ("POST", re.compile(r"^/shares/[^/]+/conversations/?$")),
     ("POST", re.compile(r"^/agents/[^/]+/conversations/[^/]+/chat/send/?$")),
+    ("POST", re.compile(r"^/upload-files/file/?$")),
+    ("POST", re.compile(r"^/upload-files/image/?$")),
     ("GET", re.compile(r"^/chat/stream/?$")),
 )
 

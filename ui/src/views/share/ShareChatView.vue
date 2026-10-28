@@ -2,17 +2,22 @@
 /*
  * This is the projet for brtc R&D Platform
  * @Author Leon-liao <liaosiliang@alltman.com>
- * @Description //分享智能体访客免登录聊天页
+ * @Description //分享智能体访客免登录聊天页（含附件上传与 DSH 授权卡片）
  * @File: ShareChatView.vue
- * @Time: 2026/10/28 10:04:41
+ * @Time: 2026/10/28 11:22:40
  * @All Rights Reserve By Brtc
  */
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { Message } from '@arco-design/web-vue'
 import { apiPrefix } from '@/config'
-import type { ChatMessage } from '@/models/agent-message'
-import type { HermesInboundFrame, HermesReplyData } from '@/models/hermes-channel'
+import { t } from '@/locales'
+import type { ChatFile, ChatMessage } from '@/models/agent-message'
+import type {
+  HermesApprovalOption,
+  HermesInboundFrame,
+  HermesReplyData,
+} from '@/models/hermes-channel'
 import type { ShareLandingResponse } from '@/models/share-agent'
 import {
   useAccessShare,
@@ -20,11 +25,32 @@ import {
   useShareLanding,
 } from '@/hooks/use-share-agent'
 import { postMessage } from '@/services/agent'
+import { uploadFile, uploadImage } from '@/services/upload-file'
+import {
+  classifyUpload,
+  MAX_ARCHIVE_UPLOAD_BYTES,
+  MAX_ATTACHMENT_COUNT,
+  MAX_UPLOAD_BYTES,
+  UPLOAD_ACCEPT,
+} from '@/utils/chat-upload'
 import { genUuid } from '@/utils/uuid'
 import ChatBubble from '@/views/space/apps/components/ChatBubble.vue'
 
 type PagePhase = 'loading' | 'need_password' | 'expired' | 'ready'
 type ShareMessage = ChatMessage & { failed?: boolean }
+type ChatAttachment = {
+  name: string
+  url: string
+  isImage: boolean
+  size?: number
+}
+type PendingApproval = {
+  approval_id: string
+  title: string
+  options: HermesApprovalOption[]
+  expires_in_ms: number
+  expiresAt: number
+}
 
 const route = useRoute()
 const shareId = computed(() => String(route.params?.share_id ?? ''))
@@ -46,46 +72,59 @@ const messages = ref<ShareMessage[]>([])
 const draft = ref('')
 const sending = ref(false)
 const draftExpanded = ref(false)
+const attachments = ref<ChatAttachment[]>([])
+const uploading = ref(false)
+const fileInputRef = ref<HTMLInputElement | null>(null)
 const chatScrollRef = ref<HTMLElement | null>(null)
+
+const pendingApprovals = ref<PendingApproval[]>([])
+const approvalNow = ref(Date.now())
+const decidingApprovalId = ref('')
+let approvalTickTimer: ReturnType<typeof setInterval> | null = null
 
 let eventSource: EventSource | null = null
 let currentAiId: string | null = null
 
-// 输入框展开/收起行数，与主站聊天卡片一致
+// 纯 thinking 帧（尚无气泡）时也要在输入框上方显示「思考中」
+const thinking = ref(false)
+
 const draftAutoSize = computed(() =>
   draftExpanded.value ? { minRows: 6, maxRows: 12 } : { minRows: 1, maxRows: 4 },
 )
 
-// 是否有未完成的 AI 气泡（用于显示「思考中…」与停止）
-const generating = computed(() =>
-  messages.value.some((item) => item.role === 'assistant' && item.status === 0),
+const generating = computed(
+  () =>
+    thinking.value ||
+    messages.value.some((item) => item.role === 'assistant' && item.status === 0),
 )
 
-/*
- * @Author Leon-liao
- * @Function: stopGeneration()
- * @Description //本地结束当前生成中的 AI 气泡（分享页无后端停止接口）
- * @Date :2026/10/28 11:08:00
- * @Param: 无
- * @return：无
- */
-const stopGeneration = () => {
-  messages.value = messages.value.map((item) => {
-    if (item.role === 'assistant' && item.status === 0) {
-      return { ...item, status: 1, thinking: false }
-    }
-    return item
-  })
-  currentAiId = null
-  Message.success('已停止')
-}
+// 当前 AI 是否已有正文（有则顶部显示「生成中」，否则「思考中」）
+const hasReplyContent = computed(() =>
+  messages.value.some(
+    (item) =>
+      item.role === 'assistant' &&
+      !item.fromHistory &&
+      (item.content || '').trim().length > 0,
+  ),
+)
+
+// 过滤空气泡：无正文、无附件、status===0 的 AI 占位不渲染
+const visibleMessages = computed(() =>
+  messages.value.filter((item) => {
+    if (item.role !== 'assistant') return true
+    const empty =
+      !(item.content || '').trim() &&
+      !(item.files && item.files.length > 0)
+    if (empty && item.status === 0) return false
+    return true
+  }),
+)
 
 const agentInitial = computed(() => {
   const name = landing.value?.agent_name?.trim()
   return name ? name.slice(0, 1) : ''
 })
 
-// ChatBubble 头像与展示名：AI 用智能体头像，访客无头像
 const agentAvatar = computed(() => landing.value?.agent_avatar || '')
 const agentDisplayName = computed(() => landing.value?.agent_name || '智能体')
 const userAvatar = ''
@@ -119,7 +158,6 @@ const readStoredToken = (): { token: string; expire_at: number } | null => {
     const token = sessionStorage.getItem(tokenStorageKey.value) || ''
     const expire_at = Number(sessionStorage.getItem(expireStorageKey.value) || 0)
     if (!token || !expire_at) return null
-    // 提前 60 秒视为过期，避免边界失效
     if (expire_at * 1000 <= Date.now() + 60_000) return null
     return { token, expire_at }
   } catch {
@@ -136,20 +174,123 @@ const closeStream = () => {
   eventSource = null
 }
 
-/*
- * @Author Leon-liao
- * @Function: applyReply(payload)
- * @Description //按 HermesReplyData 增量拼到当前 AI 气泡；done 时结束该气泡
- * @Date :2026/10/28 10:04:41
- * @Param: payload: 网关 reply 内层 HermesReplyData
- * @return：无
- */
+const stopApprovalTick = () => {
+  if (!approvalTickTimer) return
+  clearInterval(approvalTickTimer)
+  approvalTickTimer = null
+}
+
+const ensureApprovalTick = () => {
+  if (approvalTickTimer || pendingApprovals.value.length === 0) return
+  approvalTickTimer = setInterval(() => {
+    approvalNow.value = Date.now()
+  }, 1000)
+}
+
+const clearPendingApprovals = () => {
+  pendingApprovals.value = []
+  decidingApprovalId.value = ''
+  stopApprovalTick()
+}
+
+const remainingApprovalSeconds = (item: PendingApproval) =>
+  Math.max(0, Math.ceil((item.expiresAt - approvalNow.value) / 1000))
+
+const isApprovalExpired = (item: PendingApproval) => remainingApprovalSeconds(item) <= 0
+
+const upsertPendingApproval = (payload: NonNullable<HermesReplyData['approval']>) => {
+  const approvalId = String(payload.approval_id ?? '').trim()
+  if (!approvalId) return
+  const expiresIn = Number(payload.expires_in_ms) > 0 ? Number(payload.expires_in_ms) : 300000
+  const options = Array.isArray(payload.options)
+    ? payload.options.filter((item) => item && typeof item.option_id === 'string')
+    : []
+  const next: PendingApproval = {
+    approval_id: approvalId,
+    title: String(payload.title ?? '').trim() || '需要授权的操作',
+    options,
+    expires_in_ms: expiresIn,
+    expiresAt: Date.now() + expiresIn,
+  }
+  const idx = pendingApprovals.value.findIndex((item) => item.approval_id === approvalId)
+  if (idx >= 0) {
+    const copy = pendingApprovals.value.slice()
+    copy[idx] = next
+    pendingApprovals.value = copy
+  } else {
+    pendingApprovals.value = [...pendingApprovals.value, next]
+  }
+  approvalNow.value = Date.now()
+  ensureApprovalTick()
+}
+
+const decideApproval = async (item: PendingApproval, optionId: string) => {
+  if (isApprovalExpired(item) || decidingApprovalId.value) return
+  if (!agentId.value || !threadId.value || !accessToken.value) return
+  decidingApprovalId.value = item.approval_id
+  try {
+    await postMessage(
+      agentId.value,
+      threadId.value,
+      {
+        text: `#approval ${item.approval_id} ${optionId}`,
+        message_id: genUuid(),
+        files: [],
+      },
+      accessToken.value,
+    )
+    pendingApprovals.value = pendingApprovals.value.filter(
+      (entry) => entry.approval_id !== item.approval_id,
+    )
+    if (pendingApprovals.value.length === 0) {
+      stopApprovalTick()
+    }
+  } catch {
+    Message.error(t('conversation.sendFailed'))
+  } finally {
+    decidingApprovalId.value = ''
+  }
+}
+
+const stopGeneration = () => {
+  messages.value = messages.value.map((item) => {
+    if (item.role === 'assistant' && item.status === 0) {
+      return { ...item, status: 1, thinking: false }
+    }
+    return item
+  })
+  currentAiId = null
+  thinking.value = false
+  clearPendingApprovals()
+  Message.success('已停止')
+}
+
 const applyReply = (payload: HermesReplyData) => {
+  if (payload.approval?.approval_id) {
+    upsertPendingApproval(payload.approval)
+  }
   const chunk = typeof payload.text === 'string' ? payload.text : ''
   const done = payload.done === true
   const isDelta = payload.delta === true
 
+  // 纯 thinking 帧：只点亮顶部「思考中」，不建空气泡
+  if (payload.status === 'thinking' && done !== true) {
+    thinking.value = true
+    return
+  }
+
+  // 带正文或结束帧时结束 thinking 态
+  if (chunk || done) {
+    thinking.value = false
+  }
+
+  // 只有纯授权帧且无正文时，不必开 AI 气泡
+  if (!chunk && !done && !currentAiId) {
+    return
+  }
+
   if (!currentAiId) {
+    if (!chunk && done) return
     currentAiId = `ai-${genUuid()}`
     messages.value.push({
       id: currentAiId,
@@ -177,14 +318,6 @@ const applyReply = (payload: HermesReplyData) => {
   void scrollToBottom()
 }
 
-/*
- * @Author Leon-liao
- * @Function: handleStreamData(raw)
- * @Description //解析 SSE 网关帧，仅处理当前 thread_id 的 reply
- * @Date :2026/10/28 10:04:41
- * @Param: raw: SSE data 文本
- * @return：无
- */
 const handleStreamData = (raw: string) => {
   let frame: HermesInboundFrame
   try {
@@ -210,7 +343,6 @@ const openStream = (token: string) => {
     }
   }
   source.onerror = () => {
-    // 访客页简单重连：关掉后 3 秒再开
     closeStream()
     window.setTimeout(() => {
       if (accessToken.value && phase.value === 'ready') {
@@ -280,11 +412,9 @@ const bootstrap = async () => {
     return
   }
   if (info.need_password) {
-    // 有缓存 token 时直接进入，省去再输密码
     const cached = readStoredToken()
     if (cached) {
       try {
-        // 用缓存 token 建会话；失败再回密码页
         accessToken.value = cached.token
         expireAt.value = cached.expire_at
         openStream(cached.token)
@@ -322,19 +452,167 @@ const bootstrap = async () => {
   }
 }
 
-const sendDraft = async () => {
+const readUploadError = (error: unknown) => {
+  if (typeof error === 'string' && error.trim()) return error
+  if (error instanceof Error && error.message.trim()) return error.message
+  if (error && typeof error === 'object') {
+    const body = error as { message?: unknown; response?: { message?: unknown } }
+    if (typeof body.message === 'string' && body.message.trim()) return body.message
+    if (typeof body.response?.message === 'string' && body.response.message.trim()) {
+      return body.response.message
+    }
+  }
+  return t('conversation.uploadFailed')
+}
+
+const openFilePicker = () => {
+  if (uploading.value) return
+  if (attachments.value.length >= MAX_ATTACHMENT_COUNT) {
+    Message.error(t('conversation.imageLimit'))
+    return
+  }
+  fileInputRef.value?.click()
+}
+
+const escapeMarkdownLinkLabel = (name: string) => {
+  return name.replace(/[\\[\]]/g, (char) => `\\${char}`)
+}
+
+const buildOutgoingText = () => {
   const text = draft.value.trim()
-  if (!text || sending.value || !agentId.value || !threadId.value || !accessToken.value) {
+  const links = attachments.value.map(
+    (item) => `[${escapeMarkdownLinkLabel(item.name)}](${item.url})`,
+  )
+  if (links.length === 0) return text
+  if (!text) return links.join('\n')
+  return `${text}\n${links.join('\n')}`
+}
+
+const uploadOneFile = async (file: File): Promise<boolean> => {
+  if (uploading.value) return false
+  if (attachments.value.length >= MAX_ATTACHMENT_COUNT) {
+    Message.error(t('conversation.imageLimit'))
+    return false
+  }
+  const { isImage, isArchive, allowed } = classifyUpload(file)
+  if (!allowed) {
+    Message.error(t('conversation.fileTypes'))
+    return false
+  }
+  const maxBytes = isArchive ? MAX_ARCHIVE_UPLOAD_BYTES : MAX_UPLOAD_BYTES
+  if (file.size > maxBytes) {
+    Message.error(isArchive ? t('conversation.archiveTooLarge') : t('conversation.fileTooLarge'))
+    return false
+  }
+  const token = accessToken.value
+  if (!token) {
+    Message.error(t('conversation.uploadFailed'))
+    return false
+  }
+  uploading.value = true
+  try {
+    let url = ''
+    let fileName = file.name
+    if (isImage) {
+      url = (await uploadImage(file, token)).data.image_url
+    } else {
+      const uploaded = (await uploadFile(file, token)).data
+      url = uploaded.url
+      const returnedName = uploaded.name?.trim()
+      if (returnedName) fileName = returnedName
+    }
+    if (!url) {
+      Message.error(t('conversation.uploadFailed'))
+      return false
+    }
+    attachments.value.push({ name: fileName, url, isImage, size: file.size })
+    return true
+  } catch (error: unknown) {
+    Message.error(readUploadError(error))
+    return false
+  } finally {
+    uploading.value = false
+  }
+}
+
+const onFileChange = async (event: Event) => {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file) return
+  await uploadOneFile(file)
+}
+
+const onPaste = async (event: ClipboardEvent) => {
+  try {
+    const data = event.clipboardData
+    if (!data) return
+    const seen = new Set<string>()
+    const files: File[] = []
+    const pushUnique = (file: File | null) => {
+      if (!file) return
+      const key = `${file.name}:${file.size}`
+      if (seen.has(key)) return
+      seen.add(key)
+      files.push(file)
+    }
+    if (data.files?.length) {
+      for (const file of Array.from(data.files)) pushUnique(file)
+    }
+    if (data.items?.length) {
+      for (const item of Array.from(data.items)) {
+        if (item.kind !== 'file') continue
+        pushUnique(item.getAsFile())
+      }
+    }
+    if (files.length === 0) return
+    event.preventDefault()
+    for (const file of files) {
+      if (attachments.value.length >= MAX_ATTACHMENT_COUNT) {
+        Message.error(t('conversation.imageLimit'))
+        break
+      }
+      if (uploading.value) break
+      await uploadOneFile(file)
+    }
+  } catch {
+    /* 粘贴上传失败不抛出 */
+  }
+}
+
+const sendDraft = async () => {
+  const outgoing = buildOutgoingText()
+  if (
+    !outgoing ||
+    sending.value ||
+    !agentId.value ||
+    !threadId.value ||
+    !accessToken.value
+  ) {
     return
   }
   const messageId = genUuid()
   const bubbleId = `user-${messageId}`
+  const files: ChatFile[] = attachments.value.map((item) => ({
+    name: item.name,
+    url: item.url,
+    media_kind: item.isImage ? 'image' : 'file',
+    is_image: item.isImage,
+    size: item.size,
+  }))
+  const filesPayload = attachments.value.map((item) => ({
+    name: item.name,
+    url: item.url,
+    is_image: item.isImage,
+    media_kind: item.isImage ? 'image' : 'file',
+  }))
   messages.value.push({
     id: bubbleId,
     role: 'user',
-    content: text,
+    content: outgoing,
     thinking: false,
     status: 1,
+    files,
     createdAt: nowSec(),
   })
   draft.value = ''
@@ -345,9 +623,10 @@ const sendDraft = async () => {
     await postMessage(
       agentId.value,
       threadId.value,
-      { text, message_id: messageId, files: [] },
+      { text: outgoing, message_id: messageId, files: filesPayload },
       accessToken.value,
     )
+    attachments.value = []
   } catch (err) {
     const idx = messages.value.findIndex((item) => item.id === bubbleId)
     if (idx >= 0) {
@@ -357,7 +636,7 @@ const sendDraft = async () => {
         failed: true,
       }
     }
-    Message.error(err instanceof Error ? err.message : '发送失败')
+    Message.error(err instanceof Error ? err.message : t('conversation.sendFailed'))
   } finally {
     sending.value = false
   }
@@ -376,17 +655,16 @@ onMounted(() => {
 
 onUnmounted(() => {
   closeStream()
+  clearPendingApprovals()
 })
 </script>
 
 <template>
   <div class="share-chat-page flex h-[100dvh] max-h-[100dvh] w-full max-w-full flex-col overflow-hidden bg-gray-50">
-    <!-- loading -->
     <div v-if="phase === 'loading' || landingLoading" class="flex flex-1 items-center justify-center">
       <a-spin tip="加载中..." />
     </div>
 
-    <!-- expired -->
     <div v-else-if="phase === 'expired'" class="flex flex-1 items-center justify-center p-6">
       <div class="w-full max-w-sm rounded-xl border border-gray-200 bg-white p-6 text-center shadow-sm">
         <a-avatar
@@ -411,7 +689,6 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- need password -->
     <div v-else-if="phase === 'need_password'" class="flex flex-1 items-center justify-center p-6">
       <div class="w-full max-w-sm rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div class="mb-4 flex flex-col items-center text-center">
@@ -454,7 +731,6 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- ready chat -->
     <template v-else-if="phase === 'ready'">
       <header class="flex h-14 flex-shrink-0 items-center gap-3 border-b border-gray-200 bg-white px-4">
         <a-avatar
@@ -484,13 +760,14 @@ onUnmounted(() => {
       <div ref="chatScrollRef" class="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-4">
         <div class="mx-auto flex w-full max-w-3xl flex-col gap-1">
           <chat-bubble
-            v-for="msg in messages"
+            v-for="msg in visibleMessages"
             :key="msg.id"
             :message="msg"
             :avatar="msg.role === 'user' ? userAvatar : agentAvatar"
             :name="msg.role === 'user' ? userDisplayName : agentDisplayName"
+            :status-visible="false"
           />
-          <div v-if="messages.length === 0" class="py-16 text-center text-sm text-gray-400">
+          <div v-if="visibleMessages.length === 0" class="py-16 text-center text-sm text-gray-400">
             开始对话吧
           </div>
         </div>
@@ -501,10 +778,40 @@ onUnmounted(() => {
         style="padding-bottom: max(0.5rem, env(safe-area-inset-bottom))"
       >
         <div class="mx-auto flex w-full max-w-3xl flex-col gap-2">
-          <!-- 生成中：左侧「思考中…」+ 停止按钮，与聊天卡片一致 -->
+          <div v-if="pendingApprovals.length > 0" class="flex flex-col gap-2">
+            <div
+              v-for="item in pendingApprovals"
+              :key="item.approval_id"
+              class="rounded-lg border border-orange-200 bg-orange-50 px-3 py-2"
+            >
+              <div class="text-sm font-medium text-orange-800">
+                ⚠️ {{ item.title }}
+              </div>
+              <div class="mt-1 text-[11px] text-orange-600">
+                <template v-if="isApprovalExpired(item)">已过期</template>
+                <template v-else>剩余 {{ remainingApprovalSeconds(item) }} 秒</template>
+              </div>
+              <div class="mt-2 flex flex-wrap gap-2">
+                <a-button
+                  v-for="option in item.options"
+                  :key="option.option_id"
+                  size="mini"
+                  :type="option.option_id === 'allow-once' ? 'primary' : 'outline'"
+                  :status="option.option_id === 'reject-once' ? 'danger' : undefined"
+                  :disabled="isApprovalExpired(item) || decidingApprovalId === item.approval_id"
+                  :loading="decidingApprovalId === item.approval_id"
+                  @click="decideApproval(item, option.option_id)"
+                >
+                  {{ option.name || option.option_id }}
+                </a-button>
+              </div>
+            </div>
+          </div>
+
           <div v-if="generating" class="relative mb-1.5 flex h-8 justify-center">
             <div class="absolute left-0 top-[50%] translate-y-[-50%] text-[10px] text-[#374151]">
-              思考中<span class="thinking-dots"><i>.</i><i>.</i><i>.</i></span>
+              {{ hasReplyContent ? t('common.generatingNow') : t('common.thinking')
+              }}<span class="thinking-dots"><i>.</i><i>.</i><i>.</i></span>
             </div>
             <a-button type="outline" class="stop-response" @click="stopGeneration">
               <template #icon>
@@ -512,6 +819,41 @@ onUnmounted(() => {
               </template>
               停止
             </a-button>
+          </div>
+
+          <div v-if="attachments.length > 0" class="flex flex-wrap items-center gap-2">
+            <template v-for="(item, idx) in attachments" :key="`${item.url}-${idx}`">
+              <div
+                v-if="item.isImage"
+                class="group relative h-10 w-10 cursor-pointer overflow-hidden rounded-lg"
+              >
+                <a-avatar shape="square" :size="40" :image-url="item.url" />
+                <div
+                  class="pointer-events-none absolute inset-0 hidden items-center justify-center bg-gray-700/40 group-hover:flex"
+                />
+                <button
+                  type="button"
+                  class="absolute right-0 top-0 z-10 flex h-4 w-4 items-center justify-center rounded-full bg-gray-900/70 text-white"
+                  :aria-label="t('common.removeImage')"
+                  @click.stop="attachments.splice(idx, 1)"
+                >
+                  <icon-close :size="10" />
+                </button>
+              </div>
+              <div
+                v-else
+                class="flex h-10 max-w-[200px] items-center gap-1 rounded-lg border border-gray-200 bg-gray-50 px-2 text-gray-700"
+                :title="item.name"
+              >
+                <icon-file class="flex-shrink-0 text-gray-500" :size="14" />
+                <span class="min-w-0 truncate text-[10px]">{{ item.name }}</span>
+                <icon-close
+                  class="flex-shrink-0 cursor-pointer text-gray-400 hover:text-gray-700"
+                  :size="12"
+                  @click="() => attachments.splice(idx, 1)"
+                />
+              </div>
+            </template>
           </div>
 
           <div
@@ -526,9 +868,24 @@ onUnmounted(() => {
                   :disabled="sending"
                   placeholder="输入消息，Enter 发送，Shift+Enter 换行"
                   @keydown="onComposerKeydown"
+                  @paste="onPaste"
                 />
               </div>
               <div class="ml-auto flex flex-shrink-0 items-center sm:ml-0">
+                <a-button
+                  type="text"
+                  shape="circle"
+                  size="mini"
+                  class="!text-gray-700"
+                  :loading="uploading"
+                  :disabled="uploading"
+                  :aria-label="t('common.uploadFile')"
+                  @click="openFilePicker"
+                >
+                  <template #icon>
+                    <icon-plus />
+                  </template>
+                </a-button>
                 <a-button
                   type="text"
                   shape="circle"
@@ -548,7 +905,7 @@ onUnmounted(() => {
                   size="mini"
                   class="!text-gray-700"
                   aria-label="发送"
-                  :disabled="sending || !draft.trim()"
+                  :disabled="sending || (!draft.trim() && attachments.length === 0)"
                   @click="sendDraft"
                 >
                   <template #icon>
@@ -557,6 +914,13 @@ onUnmounted(() => {
                 </a-button>
               </div>
             </div>
+            <input
+              ref="fileInputRef"
+              type="file"
+              class="hidden"
+              :accept="UPLOAD_ACCEPT"
+              @change="onFileChange"
+            />
           </div>
         </div>
       </footer>

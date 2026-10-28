@@ -266,8 +266,11 @@ export const upload = <T>(url: string, options: any = {}): Promise<T> => {
     headers: { ...defaultOptions.headers, ...options.headers },
   }
   const { credential } = useCredentialStore()
-  const access_token = credential.access_token
+  // 优先用调用方传入的 token（分享态），否则回退登录态凭证
+  const access_token = options.token || credential.access_token
   if (access_token) options.headers['Authorization'] = `Bearer ${access_token}`
+  // token 只用于鉴权头，不能进 FormData/XHR 配置
+  delete options.token
 
   // 3.构建promise并使用xhr完成文件上传
   return new Promise((resolve, reject) => {

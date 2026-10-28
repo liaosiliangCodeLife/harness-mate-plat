@@ -36,48 +36,16 @@ import { useAccountStore } from '@/stores/account'
 import AgentPoster from '@/views/space/apps/components/AgentPoster.vue'
 import { genUuid } from '@/utils/uuid'
 import { normalizeChatFiles } from '@/utils/chat-files'
+import {
+  classifyUpload,
+  MAX_ARCHIVE_UPLOAD_BYTES,
+  MAX_ATTACHMENT_COUNT,
+  MAX_UPLOAD_BYTES,
+  UPLOAD_ACCEPT,
+} from '@/utils/chat-upload'
 import { reduceHermesReply, stripCursorGlyphs, stripStreamCursor } from '@/utils/hermes-channel'
 import ChatBubble from '@/views/space/apps/components/ChatBubble.vue'
 import { reloadDetailAgentKey } from '@/views/space/apps/detail-agent'
-
-const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'])
-const DOCUMENT_EXTENSIONS = new Set([
-  'txt',
-  'markdown',
-  'md',
-  'pdf',
-  'html',
-  'htm',
-  'xlsx',
-  'xls',
-  'doc',
-  'docx',
-  'csv',
-])
-const ARCHIVE_EXTENSIONS = new Set([
-  'zip',
-  'rar',
-  '7z',
-  'tar',
-  'gz',
-  'tgz',
-  'bz2',
-  'tbz',
-  'tbz2',
-  'xz',
-  'txz',
-  'zst',
-  'zipx',
-  'cab',
-  'jar',
-  'war',
-])
-const UPLOAD_ACCEPT = [...IMAGE_EXTENSIONS, ...DOCUMENT_EXTENSIONS, ...ARCHIVE_EXTENSIONS]
-  .map((item) => `.${item}`)
-  .join(',')
-const MAX_UPLOAD_BYTES = 15 * 1024 * 1024
-const MAX_ARCHIVE_UPLOAD_BYTES = 100 * 1024 * 1024
-const MAX_ATTACHMENT_COUNT = 5
 
 type ChatAttachment = {
   name: string
@@ -1064,15 +1032,6 @@ const togglePin = async () => {
   }
 }
 
-// 12.取出文件扩展名，用来区分图片和文档
-const fileExtension = (name: string) => {
-  const index = name.lastIndexOf('.')
-  if (index < 0 || index === name.length - 1) {
-    return ''
-  }
-  return name.slice(index + 1).toLowerCase()
-}
-
 // 13.把上传接口的失败信息转成提示文案
 const readUploadError = (error: unknown) => {
   if (typeof error === 'string' && error.trim()) {
@@ -1134,10 +1093,8 @@ const uploadOneFile = async (file: File): Promise<boolean> => {
     Message.error(t('conversation.imageLimit'))
     return false
   }
-  const extension = fileExtension(file.name)
-  const isImage = IMAGE_EXTENSIONS.has(extension)
-  const isArchive = ARCHIVE_EXTENSIONS.has(extension)
-  if (!isImage && !DOCUMENT_EXTENSIONS.has(extension) && !isArchive) {
+  const { isImage, isArchive, allowed } = classifyUpload(file)
+  if (!allowed) {
     Message.error(t('conversation.fileTypes'))
     return false
   }

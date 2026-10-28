@@ -15,11 +15,17 @@ const props = defineProps({
   },
   avatar: { type: String, default: '' },
   name: { type: String, default: '' },
+  // 为 false 时不显示气泡内「思考中…」「生成中」（由页面顶部状态行统一提示）
+  statusVisible: { type: Boolean, default: true },
 })
 const isUser = computed(() => props.message.role === 'user')
 const avatarUrl = computed(() => (props.avatar || '').trim())
 const generating = computed(
-  () => !isUser.value && !props.message.fromHistory && props.message.status === 0,
+  () =>
+    props.statusVisible &&
+    !isUser.value &&
+    !props.message.fromHistory &&
+    props.message.status === 0,
 )
 const parts = computed(() =>
   splitMessageFiles(stripCursorGlyphs(props.message.content || ''), props.message.files),
@@ -61,7 +67,7 @@ const timeText = computed(() => {
         }`"
       >
         <div
-          v-if="(message.thinking || generating) && !message.content && !parts.files.length"
+          v-if="statusVisible && (message.thinking || generating) && !message.content && !parts.files.length"
           class="text-[10px] text-gray-500"
         >
           {{ t('common.thinking') }}<span class="thinking-dots"><i>.</i><i>.</i><i>.</i></span>
