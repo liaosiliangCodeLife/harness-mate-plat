@@ -11,6 +11,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { Message } from '@arco-design/web-vue'
 import { apiPrefix } from '@/config'
+import type { ChatMessage } from '@/models/agent-message'
 import type { HermesInboundFrame, HermesReplyData } from '@/models/hermes-channel'
 import type { ShareLandingResponse } from '@/models/share-agent'
 import {
@@ -20,14 +21,10 @@ import {
 } from '@/hooks/use-share-agent'
 import { postMessage } from '@/services/agent'
 import { genUuid } from '@/utils/uuid'
+import ChatBubble from '@/views/space/apps/components/ChatBubble.vue'
 
 type PagePhase = 'loading' | 'need_password' | 'expired' | 'ready'
-type ChatBubble = {
-  id: string
-  role: 'user' | 'ai'
-  content: string
-  failed?: boolean
-}
+type ShareMessage = ChatMessage & { failed?: boolean }
 
 const route = useRoute()
 const shareId = computed(() => String(route.params?.share_id ?? ''))
@@ -45,18 +42,56 @@ const expireAt = ref(0)
 const agentId = ref('')
 const threadId = ref('')
 const accountId = ref('')
-const messages = ref<ChatBubble[]>([])
+const messages = ref<ShareMessage[]>([])
 const draft = ref('')
 const sending = ref(false)
+const draftExpanded = ref(false)
 const chatScrollRef = ref<HTMLElement | null>(null)
 
 let eventSource: EventSource | null = null
 let currentAiId: string | null = null
 
+// 输入框展开/收起行数，与主站聊天卡片一致
+const draftAutoSize = computed(() =>
+  draftExpanded.value ? { minRows: 6, maxRows: 12 } : { minRows: 1, maxRows: 4 },
+)
+
+// 是否有未完成的 AI 气泡（用于显示「思考中…」与停止）
+const generating = computed(() =>
+  messages.value.some((item) => item.role === 'assistant' && item.status === 0),
+)
+
+/*
+ * @Author Leon-liao
+ * @Function: stopGeneration()
+ * @Description //本地结束当前生成中的 AI 气泡（分享页无后端停止接口）
+ * @Date :2026/10/28 11:08:00
+ * @Param: 无
+ * @return：无
+ */
+const stopGeneration = () => {
+  messages.value = messages.value.map((item) => {
+    if (item.role === 'assistant' && item.status === 0) {
+      return { ...item, status: 1, thinking: false }
+    }
+    return item
+  })
+  currentAiId = null
+  Message.success('已停止')
+}
+
 const agentInitial = computed(() => {
   const name = landing.value?.agent_name?.trim()
   return name ? name.slice(0, 1) : ''
 })
+
+// ChatBubble 头像与展示名：AI 用智能体头像，访客无头像
+const agentAvatar = computed(() => landing.value?.agent_avatar || '')
+const agentDisplayName = computed(() => landing.value?.agent_name || '智能体')
+const userAvatar = ''
+const userDisplayName = '我'
+
+const nowSec = () => Math.floor(Date.now() / 1000)
 
 const expireMessage = computed(() => {
   const reason = landing.value?.expire_reason
@@ -110,20 +145,29 @@ const closeStream = () => {
  * @return：无
  */
 const applyReply = (payload: HermesReplyData) => {
-  const text = typeof payload.text === 'string' ? payload.text : ''
+  const chunk = typeof payload.text === 'string' ? payload.text : ''
   const done = payload.done === true
   const isDelta = payload.delta === true
 
   if (!currentAiId) {
     currentAiId = `ai-${genUuid()}`
-    messages.value.push({ id: currentAiId, role: 'ai', content: text })
+    messages.value.push({
+      id: currentAiId,
+      role: 'assistant',
+      content: chunk,
+      thinking: false,
+      status: done ? 1 : 0,
+      createdAt: nowSec(),
+    })
   } else {
     const idx = messages.value.findIndex((item) => item.id === currentAiId)
     if (idx >= 0) {
       const prev = messages.value[idx]
       messages.value[idx] = {
         ...prev,
-        content: isDelta ? `${prev.content || ''}${text}` : text || prev.content,
+        content: isDelta ? `${prev.content || ''}${chunk}` : chunk || prev.content,
+        thinking: false,
+        status: done ? 1 : 0,
       }
     }
   }
@@ -285,7 +329,14 @@ const sendDraft = async () => {
   }
   const messageId = genUuid()
   const bubbleId = `user-${messageId}`
-  messages.value.push({ id: bubbleId, role: 'user', content: text })
+  messages.value.push({
+    id: bubbleId,
+    role: 'user',
+    content: text,
+    thinking: false,
+    status: 1,
+    createdAt: nowSec(),
+  })
   draft.value = ''
   sending.value = true
   currentAiId = null
@@ -300,7 +351,11 @@ const sendDraft = async () => {
   } catch (err) {
     const idx = messages.value.findIndex((item) => item.id === bubbleId)
     if (idx >= 0) {
-      messages.value[idx] = { ...messages.value[idx], failed: true }
+      messages.value[idx] = {
+        ...messages.value[idx],
+        status: 2,
+        failed: true,
+      }
     }
     Message.error(err instanceof Error ? err.message : '发送失败')
   } finally {
@@ -426,54 +481,83 @@ onUnmounted(() => {
         智能体暂未连接，可能无法回复
       </div>
 
-      <main ref="chatScrollRef" class="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-4">
-        <div class="mx-auto flex w-full max-w-3xl flex-col gap-3">
-          <div
+      <div ref="chatScrollRef" class="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-4">
+        <div class="mx-auto flex w-full max-w-3xl flex-col gap-1">
+          <chat-bubble
             v-for="msg in messages"
             :key="msg.id"
-            :class="msg.role === 'user' ? 'flex justify-end' : 'flex justify-start'"
-          >
-            <div
-              :class="[
-                'max-w-[85%] whitespace-pre-wrap break-words rounded-2xl px-3 py-2 text-sm',
-                msg.role === 'user'
-                  ? msg.failed
-                    ? 'border border-red-300 bg-red-50 text-red-700'
-                    : 'bg-blue-100 text-gray-800'
-                  : 'border border-gray-200 bg-white text-gray-800',
-              ]"
-            >
-              {{ msg.content || (msg.role === 'ai' ? '…' : '') }}
-            </div>
-          </div>
+            :message="msg"
+            :avatar="msg.role === 'user' ? userAvatar : agentAvatar"
+            :name="msg.role === 'user' ? userDisplayName : agentDisplayName"
+          />
           <div v-if="messages.length === 0" class="py-16 text-center text-sm text-gray-400">
             开始对话吧
           </div>
         </div>
-      </main>
+      </div>
 
       <footer
         class="flex-shrink-0 border-t border-gray-200 bg-white px-3 pt-2"
         style="padding-bottom: max(0.5rem, env(safe-area-inset-bottom))"
       >
-        <div class="mx-auto flex w-full max-w-3xl items-end gap-2">
-          <a-textarea
-            v-model="draft"
-            class="min-w-0 flex-1"
-            :auto-size="{ minRows: 1, maxRows: 4 }"
-            :disabled="sending"
-            placeholder="输入消息，Enter 发送，Shift+Enter 换行"
-            @keydown="onComposerKeydown"
-          />
-          <a-button
-            type="primary"
-            class="flex-shrink-0"
-            :loading="sending"
-            :disabled="!draft.trim()"
-            @click="sendDraft"
+        <div class="mx-auto flex w-full max-w-3xl flex-col gap-2">
+          <!-- 生成中：左侧「思考中…」+ 停止按钮，与聊天卡片一致 -->
+          <div v-if="generating" class="relative mb-1.5 flex h-8 justify-center">
+            <div class="absolute left-0 top-[50%] translate-y-[-50%] text-[10px] text-[#374151]">
+              思考中<span class="thinking-dots"><i>.</i><i>.</i><i>.</i></span>
+            </div>
+            <a-button type="outline" class="stop-response" @click="stopGeneration">
+              <template #icon>
+                <icon-poweroff />
+              </template>
+              停止
+            </a-button>
+          </div>
+
+          <div
+            class="flex flex-col justify-center gap-2 rounded-[24px] border border-gray-200 bg-white px-3 py-2 sm:px-4"
           >
-            发送
-          </a-button>
+            <div class="flex flex-wrap items-end gap-1 sm:flex-nowrap sm:items-center sm:gap-2">
+              <div class="draft-input min-w-0 flex-1 basis-[min(100%,12rem)] sm:basis-auto">
+                <a-textarea
+                  :key="draftExpanded ? 'expanded' : 'normal'"
+                  v-model="draft"
+                  :auto-size="draftAutoSize"
+                  :disabled="sending"
+                  placeholder="输入消息，Enter 发送，Shift+Enter 换行"
+                  @keydown="onComposerKeydown"
+                />
+              </div>
+              <div class="ml-auto flex flex-shrink-0 items-center sm:ml-0">
+                <a-button
+                  type="text"
+                  shape="circle"
+                  size="mini"
+                  class="!text-gray-700"
+                  :aria-label="draftExpanded ? '收起输入框' : '展开输入框'"
+                  @click="draftExpanded = !draftExpanded"
+                >
+                  <template #icon>
+                    <icon-down v-if="draftExpanded" />
+                    <icon-up v-else />
+                  </template>
+                </a-button>
+                <a-button
+                  type="text"
+                  shape="circle"
+                  size="mini"
+                  class="!text-gray-700"
+                  aria-label="发送"
+                  :disabled="sending || !draft.trim()"
+                  @click="sendDraft"
+                >
+                  <template #icon>
+                    <icon-send />
+                  </template>
+                </a-button>
+              </div>
+            </div>
+          </div>
         </div>
       </footer>
     </template>
@@ -483,5 +567,82 @@ onUnmounted(() => {
 <style scoped>
 .share-chat-page {
   overscroll-behavior: none;
+}
+
+.draft-input {
+  display: block;
+  width: 100%;
+}
+
+.draft-input :deep(.arco-textarea-wrapper),
+.draft-input :deep(.arco-textarea-wrapper:hover),
+.draft-input :deep(.arco-textarea-wrapper:focus-within),
+.draft-input :deep(.arco-textarea-wrapper.arco-textarea-focus),
+.draft-input :deep(.arco-textarea-wrapper.arco-textarea-disabled),
+.draft-input :deep(.arco-textarea-wrapper.arco-textarea-disabled:hover) {
+  display: block;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.draft-input :deep(.arco-textarea) {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  padding: 5px 0;
+  font-size: 11px;
+  line-height: 20px;
+  outline: none;
+}
+
+.stop-response {
+  height: 32px;
+  border-radius: 8px;
+  border-color: #e5e7eb;
+  background-color: #fff;
+  color: #374151;
+}
+
+.stop-response:hover {
+  border-color: #d1d5db;
+  background-color: #fff;
+  color: #1f2937;
+}
+
+.thinking-dots {
+  display: inline-flex;
+  align-items: flex-end;
+  height: 1em;
+  margin-left: 1px;
+}
+
+.thinking-dots i {
+  display: inline-block;
+  font-style: normal;
+  line-height: 1;
+  animation: thinking-dot-wave 1.2s ease-in-out infinite;
+}
+
+.thinking-dots i:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.thinking-dots i:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes thinking-dot-wave {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.25;
+  }
+
+  30% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
 }
 </style>

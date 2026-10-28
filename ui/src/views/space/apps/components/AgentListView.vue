@@ -203,7 +203,18 @@ watch(
             <div class="truncate">Token: {{ agent.total_token_count }}</div>
             <div class="truncate">{{ t('space.lastActive', { time: formatTimestamp(agent.last_seen_at) }) }}</div>
           </div>
-          <div class="mt-3 flex items-center justify-end" @click.stop>
+          <div class="mt-3 flex items-center justify-between gap-2" @click.stop>
+            <a-button
+              type="text"
+              size="mini"
+              class="!px-1 !text-gray-600"
+              @click.stop="openShare(agent)"
+            >
+              <template #icon>
+                <icon-share-alt />
+              </template>
+              <span class="text-xs">分享</span>
+            </a-button>
             <a-dropdown position="br" trigger="click">
               <a-button type="text" size="mini" class="!text-gray-700 w-6 !px-0" @click.stop>
                 ...
