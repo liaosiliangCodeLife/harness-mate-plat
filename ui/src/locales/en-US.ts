@@ -279,10 +279,10 @@ const enUS = {
     wecomHint: 'Scan the QR code to add me on WeCom',
     overview: 'Overview',
     overviewBody:
-      'The LLMOps API is the integration interface the Brtc LLMOps platform provides for developers. It is built so teams can do more of their work through the API. The Coze API also extends models, workflows, knowledge bases, and plugins, so custom agents stay precise, efficient, and capable.',
+      'The HarnessMate API is the integration interface the Brtc HarnessMate platform provides for developers. It is built so teams can do more of their work through the API. The Coze API also extends models, workflows, knowledge bases, and plugins, so custom agents stay precise, efficient, and capable.',
     preparation: 'Before you start',
     preparationBody:
-      'Create a personal access token, then create and publish an Agent on LLMOps.',
+      'Create a personal access token, then create and publish an Agent on HarnessMate.',
     basicUsage: 'Getting started',
     blockingChat: 'Blocking chat',
     streamingChat: 'Streaming chat',

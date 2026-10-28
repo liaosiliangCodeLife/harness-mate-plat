@@ -1,5 +1,5 @@
 import { Message } from '@arco-design/web-vue'
-import { closeAllHermesChannels } from '@/hooks/use-hermes-channel'
+import { stop as stopChatStream } from '@/hooks/use-chat-stream'
 import { apiPrefix, httpCode } from '@/config'
 import { useCredentialStore } from '@/stores/credential'
 import router from '@/router'
@@ -20,7 +20,7 @@ let lastUnauthorizedRedirectAt = 0
  * @return：无
  */
 const redirectToLogin = async (message?: string) => {
-  closeAllHermesChannels()
+  stopChatStream()
   useCredentialStore().clear()
   const now = Date.now()
   if (now - lastUnauthorizedRedirectAt < 1500) {
@@ -48,25 +48,28 @@ type FetchOptionType = Omit<RequestInit, 'body'> & {
   body?: BodyInit | Record<string, any> | null
   // 为 true 时，not_found 用消息提示并拒绝，不跳转 404 页
   messageOnNotFound?: boolean
-  // 为 true 时失败只拒绝，不弹提示、不跳转
+  // 为 true 时失败只拒绝，不弹提示、不跳转（含 401 不踢登录）
   silent?: boolean
+  // 自定义 Bearer token；缺省读登录态 credential.access_token
+  token?: string
 }
 
 // 4.封装基础的fetch请求
 const baseFetch = <T>(url: string, fetchOptions: FetchOptionType): Promise<T> => {
-  // 5.将所有的配置信息合并起来；messageOnNotFound 只给拦截器使用，不能传给 fetch
+  // 5.将所有的配置信息合并起来；业务字段只给拦截器使用，不能传给 fetch
   const messageOnNotFound = Boolean(fetchOptions.messageOnNotFound)
   const silent = Boolean(fetchOptions.silent)
   const requestOptions: FetchOptionType = { ...fetchOptions }
   delete requestOptions.messageOnNotFound
   delete requestOptions.silent
+  delete requestOptions.token
   const options: typeof baseFetchOptions & FetchOptionType = Object.assign(
     {},
     baseFetchOptions,
     requestOptions,
   )
   const { credential } = useCredentialStore()
-  const access_token = credential.access_token
+  const access_token = fetchOptions.token || credential.access_token
   if (access_token) options.headers.set('Authorization', `Bearer ${access_token}`)
 
   // 6.组装url
@@ -112,6 +115,11 @@ const baseFetch = <T>(url: string, fetchOptions: FetchOptionType): Promise<T> =>
           if (json.code === httpCode.success) {
             resolve(json)
           } else if (json.code === httpCode.unauthorized) {
+            // silent 请求（如分享访客页）不跳登录，只把错误抛给调用方
+            if (silent) {
+              reject(new Error(json.message || t('utils.signInAgain')))
+              return
+            }
             await redirectToLogin(json.message)
             reject(new Error(json.message || t('utils.signInAgain')))
           } else if (silent) {

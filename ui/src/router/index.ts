@@ -84,6 +84,12 @@ const router = createRouter({
           component: () => import('@/views/web-apps/IndexView.vue'),
         },
         {
+          path: '/s/:share_id',
+          name: 'share-chat',
+          component: () => import('@/views/share/ShareChatView.vue'),
+          meta: { title: '分享对话' },
+        },
+        {
           path: '/errors/404',
           name: 'errors-not-found',
           component: () => import('@/views/errors/NotFoundView.vue'),
@@ -99,7 +105,8 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to) => {
-  if (!auth.isLogin() && !['auth-login', 'auth-authorize'].includes(to.name as string)) {
+  const publicNames = ['auth-login', 'auth-authorize', 'share-chat']
+  if (!auth.isLogin() && !publicNames.includes(to.name as string)) {
     return { path: '/auth/login' }
   }
 })

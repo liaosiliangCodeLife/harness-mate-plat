@@ -119,3 +119,23 @@ export const deleteAgentConversation = (agent_id: string, conversation_id: strin
     `/agents/${agent_id}/conversations/${conversation_id}/delete`,
   )
 }
+
+// 发送聊天消息；可选 token 用于分享态访客（并 silent 避免踢登录）
+export const postMessage = (
+  agent_id: string,
+  thread_id: string,
+  req: { text: string; message_id: string; files?: unknown[] },
+  token?: string,
+) => {
+  return post<BaseResponse<{ sent: boolean }>>(
+    `/agents/${encodeURIComponent(agent_id)}/conversations/${encodeURIComponent(thread_id)}/chat/send`,
+    {
+      body: {
+        text: req.text,
+        message_id: req.message_id,
+        files: req.files ?? [],
+      },
+      ...(token ? { token, silent: true } : {}),
+    },
+  )
+}

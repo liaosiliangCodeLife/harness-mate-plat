@@ -6,7 +6,6 @@ export type AgentConversation = {
   account_id: string
   agent_id: string
   thread_id: string
-  ws_session_id: string
   title: string
   pinned: number
   status: number

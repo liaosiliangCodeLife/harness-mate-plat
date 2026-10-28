@@ -14,6 +14,7 @@ import type { Agent } from '@/models/agent'
 import { ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PairHermesModal from '@/views/space/apps/components/PairHermesModal.vue'
+import ShareAgentModal from '@/views/space/apps/components/ShareAgentModal.vue'
 import { t, translateAgentInfoKey } from '@/locales'
 
 // 1.定义页面所需数据
@@ -28,6 +29,14 @@ const { loading: getAgentsWithPageLoading, agents, paginator, loadAgents } = use
 const { handleDeleteAgent } = useDeleteAgent()
 const pairHermesVisible = ref(false)
 const pairingAgent = ref<Agent | null>(null)
+const shareVisible = ref(false)
+const sharingAgent = ref<Agent | null>(null)
+
+// 打开分享弹窗
+const openShare = (agent: Agent) => {
+  sharingAgent.value = agent
+  shareVisible.value = true
+}
 
 // 2.把时间戳格式化成可读时间，空值显示为 -
 const formatTimestamp = (timestamp: number | null) => {
@@ -200,6 +209,7 @@ watch(
                 ...
               </a-button>
               <template #content>
+                <a-doption @click.stop="openShare(agent)">分享</a-doption>
                 <a-doption @click.stop="openPairHermes(agent)">{{
                   agent.agent_type === 'DEEPSEEK_HARNESS'
                     ? t('space.pairDeepseek')
@@ -235,6 +245,7 @@ watch(
     </a-row>
   </a-spin>
   <pair-hermes-modal v-model:visible="pairHermesVisible" :agent="pairingAgent" />
+  <share-agent-modal v-model:visible="shareVisible" :agent="sharingAgent" />
 </template>
 
 <style scoped></style>

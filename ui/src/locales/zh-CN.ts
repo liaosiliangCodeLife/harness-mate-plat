@@ -276,10 +276,10 @@ const zhCN = {
     wecomHint: '扫描二维码，添加我的企业微信',
     overview: '概览',
     overviewBody:
-      'LLMOps API 是博睿 LLMOps 平台面向开发者提供的专业技术交互能力，致力于通过 API 实现开发者更高效更全面的述求，不仅如此，扣子 API 将提供更加灵活的和高精度的模型、工作流、知识库和扩展插件等能力的扩展，让定制化 Agent 更加的精确、高效和智能。',
+      'HarnessMate API 是博睿 HarnessMate 平台面向开发者提供的专业技术交互能力，致力于通过 API 实现开发者更高效更全面的述求，不仅如此，扣子 API 将提供更加灵活的和高精度的模型、工作流、知识库和扩展插件等能力的扩展，让定制化 Agent 更加的精确、高效和智能。',
     preparation: '准备工作',
     preparationBody:
-      '在开始之前，您需 需要创建个人访问令牌，其次需要在 LLMOps 上完成 Agent 的创建与发布。',
+      '在开始之前，您需 需要创建个人访问令牌，其次需要在 HarnessMate 上完成 Agent 的创建与发布。',
     basicUsage: '基础使用',
     blockingChat: '非流式Chat',
     streamingChat: '流式Chat',
@@ -301,7 +301,7 @@ const zhCN = {
     keyRemarkPlaceholder: '请输入秘钥备注，用于描述秘钥基础信息',
     deleteTitle: '要删除该API秘钥吗?',
     deleteContent:
-      '删除秘钥后，无法使用该秘钥访问 LLMOps 个人空间中的所有 Agent，并且无法恢复，如果临时关闭请使用禁用功能。',
+      '删除秘钥后，无法使用该秘钥访问 HarnessMate 个人空间中的所有 Agent，并且无法恢复，如果临时关闭请使用禁用功能。',
   },
   webapp: {
     newConversation: '新增会话',

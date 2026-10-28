@@ -1,4 +1,4 @@
-import { closeAllHermesChannels } from '@/hooks/use-hermes-channel'
+import { stop as stopChatStream } from '@/hooks/use-chat-stream'
 import { post } from '@/utils/request'
 import { type BaseResponse } from '@/models/base'
 import {
@@ -30,8 +30,8 @@ export const register = (req: RegisterRequest) => {
   })
 }
 
-// 退出登录请求：先关掉本页通道，再通知服务端
+// 退出登录请求：先关掉本页聊天流，再通知服务端
 export const logout = () => {
-  closeAllHermesChannels()
+  stopChatStream()
   return post<BaseResponse<any>>(`/auth/logout`)
 }

@@ -3,6 +3,7 @@ import { computed, inject, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useGetAgentConversations } from '@/hooks/use-agent'
 import ConversationChatCard from '@/views/space/apps/components/ConversationChatCard.vue'
+import ShareAgentModal from '@/views/space/apps/components/ShareAgentModal.vue'
 import {
   conversationListVersionKey,
   detailAgentKey,
@@ -34,6 +35,7 @@ const pageLoading = computed(
 
 const isMobile = ref(false)
 const activeConversationId = ref<string | null>(null)
+const shareVisible = ref(false)
 let mobileMedia: MediaQueryList | null = null
 const syncIsMobile = () => {
   isMobile.value = Boolean(mobileMedia?.matches)
@@ -147,6 +149,33 @@ watch(
     @scroll="handleScroll"
   >
     <div class="min-w-0 w-full max-w-full p-3 sm:p-6">
+      <!-- 分享入口：放在会话区顶部，手机全屏聊天时隐藏以免挤布局 -->
+      <div
+        v-if="agentMatched && agent && !(isMobile && activeConversationId)"
+        class="mb-3 flex items-center justify-end"
+      >
+        <a-button
+          type="text"
+          class="hidden !text-gray-600 sm:inline-flex"
+          title="分享"
+          @click="shareVisible = true"
+        >
+          <template #icon>
+            <icon-share-alt />
+          </template>
+          分享
+        </a-button>
+        <a-button
+          type="text"
+          class="inline-flex !px-2 !text-gray-600 sm:hidden"
+          title="分享"
+          @click="shareVisible = true"
+        >
+          <template #icon>
+            <icon-share-alt />
+          </template>
+        </a-button>
+      </div>
       <!-- 手机：会话列表；点进后全屏聊天 -->
       <div v-if="isMobile && agentMatched && agent" class="min-w-0 w-full">
         <div v-if="!activeConversationId" class="flex flex-col gap-2">
@@ -224,6 +253,7 @@ watch(
       </a-row>
     </div>
   </a-spin>
+  <share-agent-modal v-model:visible="shareVisible" :agent="agent" />
 </template>
 
 <style scoped></style>
