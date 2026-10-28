@@ -30,7 +30,7 @@ def _validate_json_object():
 @inject
 @dataclass
 class AuthHandler:
-    """LLMOps平台自有授权认证处理器"""
+    """HarnessMate 平台自有授权认证处理器"""
     account_service: AccountService
 
     def password_login(self):

@@ -99,11 +99,10 @@ class ConversationHandler:
         if not req.validate():
             return validate_error_json(req.errors)
 
-        # 2.账号取当前登录账号，会话归属路径中的智能体；连接标识用该智能体的 peer_id
+        # 2.账号取当前登录账号，会话归属路径中的智能体
         conversation = self.conversation_service.create_conversation(
             account_id=current_user.id,
             agent_id=agent.id,
-            agent_peer_id=agent.peer_id or "",
             thread_id=req.thread_id.data,
             title=req.title.data or "",
             conversation_info=req.conversation_info.data if isinstance(req.conversation_info.data, dict) else {},

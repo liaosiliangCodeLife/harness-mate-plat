@@ -174,7 +174,7 @@ class MediaFileSize:
 
 
 class OpenUploadFileReq(FlaskForm):
-    """免登录上传文件请求，图片、文档、音频、视频和压缩包走同一个接口"""
+    """免登录上传文件请求，图片、文档、音频、视频和压缩包走同一个接口，用 thread_id 定位会话"""
     file = FileField("file", validators=[
         FileRequired("上传文件不能为空"),
         MediaFileSize(),
@@ -185,4 +185,4 @@ class OpenUploadFileReq(FlaskForm):
     ])
     bot_id = StringField("bot_id", validators=[DataRequired("bot_id 不能为空")])
     bot_key = StringField("bot_key", validators=[DataRequired("bot_key 不能为空")])
-    session_id = StringField("session_id", validators=[DataRequired("session_id 不能为空")])
+    thread_id = StringField("thread_id", validators=[DataRequired("thread_id 不能为空")])

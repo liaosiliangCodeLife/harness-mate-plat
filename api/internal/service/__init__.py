@@ -8,6 +8,7 @@
 from .account_service import AccountService
 from .agent_service import AgentService
 from .base_service import BaseService
+from .chat_service import ChatService
 from .conversation_service import ConversationService
 from .cos_service import CosService
 from .jwt_service import JwtService
@@ -15,6 +16,7 @@ from .mail_service import MailService
 from .message_service import MessageService
 from .oauth_service import OAuthService
 from .server_service import ServerService
+from .share_agent_service import ShareAgentService
 from .upload_file_service import UploadFileService
 
 __all__ = [
@@ -29,4 +31,6 @@ __all__ = [
     "AgentService",
     "ConversationService",
     "MessageService",
+    "ShareAgentService",
+    "ChatService",
 ]

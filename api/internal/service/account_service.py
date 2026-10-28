@@ -178,7 +178,7 @@ class AccountService(BaseService):
         expire_at = int((datetime.now() + timedelta(days=30)).timestamp())
         payload = {
             "sub": str(account.id),
-            "iss": "llmops",
+            "iss": "harnessmate",
             "exp": expire_at,
         }
         access_token = self.jwt_service.generate_token(payload)

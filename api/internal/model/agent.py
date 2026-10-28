@@ -71,13 +71,15 @@ class Conversation(db.Model):
         Index("conversation_account_id_idx", "account_id"),
         Index("conversation_agent_id_idx", "agent_id"),
         Index("conversation_last_message_at_idx", "last_message_at"),
+        Index("conversation_share_agent_id_idx", "share_agent_id"),
     )
 
     id = Column(UUID, nullable=False, server_default=text("uuid_generate_v4()"))  # 会话主键；创建接口由服务端写入 uuid4，未传入时才由数据库生成
     account_id = Column(UUID, nullable=False)  # 所属账号 ID，关联 account.id；与 thread_id 组成唯一约束 uk_conversation_account_thread
     agent_id = Column(UUID, ForeignKey("agent.id", name="fk_conversation_agent_id"), nullable=False)  # 所属智能体主键，外键关联 agent.id，按智能体查询会话
+    share_agent_id = Column(UUID, ForeignKey("share_agent.id", name="fk_conversation_share_agent_id"), nullable=True)  # 来源分享主键，外键关联 share_agent.id；NULL 表示非分享会话
     thread_id = Column(String(255), nullable=False)  # 会话线程标识，同一账号下唯一，用于把消息归到同一条会话
-    ws_session_id = Column(String(255), nullable=False, server_default=text("''::character varying"))  # 网关连接会话标识，由所属智能体 peer_id 与会话 id 十六进制前 16 位拼接，客户端连接网关时写入 JWT
+    type = Column(SmallInteger, nullable=False, server_default=text("0"))  # 会话类型：0=普通对话 1=群组对话 2=分享智能体对话
     status = Column(SmallInteger, nullable=False, server_default=text("0"))  # 会话状态，默认 0，用于筛选和流程控制
     online_at = Column(DateTime, nullable=True)  # 会话最近一次在线心跳时间；在线判定 = status=1 且该时间在 90 秒内
     title = Column(String(255), nullable=False, server_default=text("''::character varying"))  # 会话标题，会话列表展示用，默认空字符串

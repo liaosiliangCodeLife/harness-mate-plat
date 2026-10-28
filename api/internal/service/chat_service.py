@@ -13,12 +13,16 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
 
+from sqlalchemy import func, select
+
 import requests
 from injector import inject
 
+from flask import g
+
 from config import Config
-from internal.exception import FailException, NotFoundException
-from internal.model import Account, Agent, Conversation, Server
+from internal.exception import FailException, ForbiddenException, NotFoundException
+from internal.model import Account, Agent, Conversation, Message, Server, ShareAgent
 from pkg.sqlalchemy import SQLAlchemy
 from .base_service import BaseService
 from .message_service import MessageService
@@ -55,7 +59,7 @@ class ChatService(BaseService):
         * @Param: account: 当前登录账号，Account；agent_id: 智能体主键，字符串；thread_id: 会话线程标识，字符串；text: 去掉首尾空白后的消息正文，字符串；message_id: 客户端消息幂等键，字符串；files: 附件列表，没有时为 None
         * @return：Hub 返回 200 时为 {"sent": True}。智能体或会话不存在抛 NotFoundException；未绑定网关、连接未就绪或发送失败先把该条消息标为失败再抛 FailException
         """
-        # 1.查当前账号下未删除的智能体，非法主键与无记录统一视为不存在
+        # 1.查未删除的智能体：归属当前账号，或分享态 token 指向的分享所绑定的智能体
         try:
             agent_uuid = UUID(str(agent_id))
         except (ValueError, TypeError, AttributeError) as exc:
@@ -63,11 +67,28 @@ class ChatService(BaseService):
 
         agent = self.db.session.query(Agent).filter(
             Agent.id == agent_uuid,
-            Agent.account_id == account.id,
             Agent.deleted_at.is_(None),
         ).one_or_none()
         if agent is None:
             raise NotFoundException("智能体不存在")
+
+        is_owner = agent.account_id == account.id
+        if not is_owner:
+            token_scope = getattr(g, "token_scope", None)
+            token_share_id = getattr(g, "share_id", None)
+            if token_scope != "share" or not token_share_id:
+                raise NotFoundException("智能体不存在")
+            try:
+                share_uuid = UUID(str(token_share_id))
+            except (ValueError, TypeError, AttributeError) as exc:
+                raise NotFoundException("智能体不存在") from exc
+            share = self.db.session.query(ShareAgent).filter(
+                ShareAgent.id == share_uuid,
+                ShareAgent.agent_id == agent.id,
+                ShareAgent.deleted_at.is_(None),
+            ).one_or_none()
+            if share is None:
+                raise NotFoundException("智能体不存在")
 
         # 2.会话必须属于该智能体和当前账号，且未软删除
         conversation = self.db.session.query(Conversation).filter(
@@ -78,6 +99,30 @@ class ChatService(BaseService):
         ).one_or_none()
         if conversation is None:
             raise NotFoundException("会话不存在")
+
+        # 2.1 分享会话发送前校验对话次数配额
+        if conversation.share_agent_id is not None:
+            share_for_quota = self.db.session.query(ShareAgent).filter(
+                ShareAgent.id == conversation.share_agent_id,
+            ).one_or_none()
+            if share_for_quota is not None and share_for_quota.deleted_at is not None:
+                raise ForbiddenException("分享不存在或已失效")
+            if (
+                share_for_quota is not None
+                and share_for_quota.access_num
+                and share_for_quota.access_num > 0
+            ):
+                accessed_num = self.db.session.scalar(
+                    select(func.count(Message.id))
+                    .select_from(Message)
+                    .join(Conversation, Conversation.id == Message.conversation_id)
+                    .where(
+                        Conversation.share_agent_id == share_for_quota.id,
+                        Message.message_role == "user",
+                    )
+                ) or 0
+                if int(accessed_num) >= share_for_quota.access_num:
+                    raise ForbiddenException("该分享的对话次数已用完")
 
         # 3.先落用户消息。token 传 0，由 message_service 按正文估算
         message_info = {"files": files} if files else {}

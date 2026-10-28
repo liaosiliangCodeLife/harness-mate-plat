@@ -5,15 +5,23 @@
 @Author  : liaosiliang1234@126.com
 @File    : middleware.py
 """
+import re
 from dataclasses import dataclass
 from typing import Optional
 
-from flask import Request
+from flask import Request, g
 from injector import inject
 
-from internal.exception import UnauthorizedException
+from internal.exception import ForbiddenException, UnauthorizedException
 from internal.model import Account
 from internal.service import JwtService, AccountService
+
+# 分享态 token 仅允许访问的路径（方法 + path 正则）
+_SHARE_SCOPE_RULES = (
+    ("POST", re.compile(r"^/shares/[^/]+/conversations/?$")),
+    ("POST", re.compile(r"^/agents/[^/]+/conversations/[^/]+/chat/send/?$")),
+    ("GET", re.compile(r"^/chat/stream/?$")),
+)
 
 
 @inject
@@ -24,14 +32,30 @@ class Middleware:
     account_service: AccountService
 
     def request_loader(self, request: Request) -> Optional[Account]:
-        """登录管理器的请求加载器"""
-        # 1.单独为llmops路由蓝图创建请求加载器
-        if request.blueprint == "llmops":
+        """
+        * @Author Leon-liao
+        * @Function:
+        request_loader(request)
+        * @Description //按 Bearer/query token 加载账号，并把 scope、share_id 写入 g；分享态 token 仅放行白名单路径
+        * @Date :2026/10/28 09:36:06
+        * @Param:
+        request: Flask 请求对象
+        * @return：Account 或 None；凭证无效抛 UnauthorizedException，分享态越权抛 ForbiddenException
+        """
+        # 1.单独为 harnessmate 路由蓝图创建请求加载器
+        if request.blueprint == "harnessmate":
             # 2.校验获取access_token
             access_token = self._validate_credential(request)
 
-            # 3.解析token信息
+            # 3.解析token信息，并把分享态字段写入 g
             payload = self.jwt_service.parse_token(access_token)
+            g.token_scope = payload.get("scope")
+            g.share_id = payload.get("share_id")
+
+            # 4.分享态 token 只允许访问白名单接口
+            if g.token_scope == "share" and not self._is_share_scope_allowed(request):
+                raise ForbiddenException("分享态凭证无权限")
+
             account_id = payload.get("sub")
             account = self.account_service.get_account(account_id)
             if not account:
@@ -39,6 +63,25 @@ class Middleware:
             return account
         else:
             return None
+
+    @classmethod
+    def _is_share_scope_allowed(cls, request: Request) -> bool:
+        """
+        * @Author Leon-liao
+        * @Function:
+        _is_share_scope_allowed(request)
+        * @Description //判断当前请求是否在分享态 token 白名单内
+        * @Date :2026/10/28 09:36:06
+        * @Param:
+        request: Flask 请求对象，读取 method 与 path
+        * @return：允许访问返回 True，否则 False
+        """
+        method = (request.method or "").upper()
+        path = request.path or ""
+        for allowed_method, pattern in _SHARE_SCOPE_RULES:
+            if method == allowed_method and pattern.match(path):
+                return True
+        return False
 
     @classmethod
     def _validate_credential(cls, request: Request) -> str:

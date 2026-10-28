@@ -14,7 +14,6 @@ import uuid
 _ID_PREFIX = {
     "peer_id": "pr-",
     "bot_id": "bt-",
-    "ws_session_id": "ws-",
     "thread_id": "td-",
 }
 
@@ -29,7 +28,7 @@ def generate_agent_identifier(account_id: str, agent_id: str, id_type: str) -> s
     Args:
         account_id: 当前登录账号 id 的字符串。
         agent_id: 参与散列的智能体 id；空字符串表示未传，改用随机 uuid。
-        id_type: 标识类型，取 peer_id、bot_id、ws_session_id、thread_id。
+        id_type: 标识类型，取 peer_id、bot_id、thread_id。
 
     Returns:
         带类型前缀的标识字符串。

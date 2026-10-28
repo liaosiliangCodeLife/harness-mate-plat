@@ -124,7 +124,6 @@ class GetConversationResp(Schema):
     bot_id = fields.String(dump_default="")
     peer_id = fields.String(dump_default="")
     thread_id = fields.String(dump_default="")
-    ws_session_id = fields.String(dump_default="")
     gateway_url = fields.String(dump_default="")
     gateway_key = fields.String(dump_default="")
     title = fields.String(dump_default="")
@@ -198,7 +197,6 @@ class GetConversationResp(Schema):
             Agent.bot_id.key: self._agent_text(agent, Agent.bot_id),
             Agent.peer_id.key: self._agent_text(agent, Agent.peer_id),
             "thread_id": data.thread_id,
-            "ws_session_id": data.ws_session_id,
             Server.gateway_url.key: self._gateway_text(agent, Server.gateway_url),
             Server.gateway_key.key: self._gateway_text(agent, Server.gateway_key),
             "title": data.title,

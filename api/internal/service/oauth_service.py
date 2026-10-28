@@ -33,7 +33,7 @@ class OAuthService(BaseService):
 
     @classmethod
     def get_all_oauth(cls) -> dict[str, OAuth]:
-        """获取LLMOps集成的所有第三方授权认证方式"""
+        """获取 HarnessMate 集成的所有第三方授权认证方式"""
         # 1.实例化集成的第三方授权认证OAuth
         github = GithubOAuth(
             client_id=os.getenv("GITHUB_CLIENT_ID"),
@@ -109,7 +109,7 @@ class OAuthService(BaseService):
         expire_at = int((datetime.now() + timedelta(days=30)).timestamp())
         payload = {
             "sub": str(account.id),
-            "iss": "llmops",
+            "iss": "harnessmate",
             "exp": expire_at,
         }
         access_token = self.jwt_service.generate_token(payload)

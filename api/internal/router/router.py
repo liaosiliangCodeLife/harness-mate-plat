@@ -19,6 +19,7 @@ from internal.handler import (
     AgentHandler,
     ConversationHandler,
     MessageHandler,
+    ShareAgentHandler,
     ChatHandler,
     GatewayHandler,
 )
@@ -36,13 +37,14 @@ class Router:
     agent_handler: AgentHandler
     conversation_handler: ConversationHandler
     message_handler: MessageHandler
+    share_agent_handler: ShareAgentHandler
     chat_handler: ChatHandler
     gateway_handler: GatewayHandler
 
     def register_router(self, app: Flask):
         """注册路由"""
         # 1.创建一个蓝图
-        bp = Blueprint("llmops", __name__, url_prefix="")
+        bp = Blueprint("harnessmate", __name__, url_prefix="")
 
         # 2.上传文件模块
         bp.add_url_rule("/upload-files/file", methods=["POST"], view_func=self.upload_file_handler.upload_file)
@@ -142,7 +144,49 @@ class Router:
             view_func=self.message_handler.create_message,
         )
 
-        # 9.聊天消息转发。浏览器只打到 API，由 API 转给 Hub
+        # 9.分享智能体模块
+        bp.add_url_rule(
+            "/agents/<string:agent_id>/shares",
+            methods=["POST"],
+            view_func=self.share_agent_handler.create,
+            endpoint="create_share_agent",
+        )
+        bp.add_url_rule(
+            "/agents/<string:agent_id>/shares",
+            view_func=self.share_agent_handler.list,
+            endpoint="list_share_agents",
+        )
+        bp.add_url_rule(
+            "/agents/<string:agent_id>/shares/<string:share_id>",
+            methods=["POST"],
+            view_func=self.share_agent_handler.update,
+            endpoint="update_share_agent",
+        )
+        bp.add_url_rule(
+            "/agents/<string:agent_id>/shares/<string:share_id>/delete",
+            methods=["POST"],
+            view_func=self.share_agent_handler.delete,
+            endpoint="delete_share_agent",
+        )
+        bp.add_url_rule(
+            "/shares/<string:share_id>",
+            view_func=self.share_agent_handler.landing,
+            endpoint="get_share_landing",
+        )
+        bp.add_url_rule(
+            "/shares/<string:share_id>/access",
+            methods=["POST"],
+            view_func=self.share_agent_handler.access,
+            endpoint="access_share",
+        )
+        bp.add_url_rule(
+            "/shares/<string:share_id>/conversations",
+            methods=["POST"],
+            view_func=self.share_agent_handler.create_conversation,
+            endpoint="create_share_conversation",
+        )
+
+        # 10.聊天消息转发。浏览器只打到 API，由 API 转给 Hub
         bp.add_url_rule(
             "/agents/<string:agent_id>/conversations/<string:thread_id>/chat/send",
             methods=["POST"],
@@ -150,9 +194,9 @@ class Router:
         )
         bp.add_url_rule("/chat/stream", methods=["GET"], view_func=self.chat_handler.stream)
 
-        # 10.Hub 回写完成帧。路由不带 /api 前缀，nginx 对外才加
+        # 11.Hub 回写完成帧。路由不带 /api 前缀，nginx 对外才加
         bp.add_url_rule("/internal/messages", methods=["POST"], view_func=self.chat_handler.internal_create_message)
         bp.add_url_rule("/internal/bot-key", methods=["GET"], view_func=self.gateway_handler.get_bot_key)
 
-        # 11.在应用上注册蓝图
+        # 12.在应用上注册蓝图
         app.register_blueprint(bp)

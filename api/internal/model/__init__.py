@@ -8,6 +8,7 @@
 from .account import Account, AccountOAuth
 from .agent import Agent, Conversation, Message
 from .server import Server
+from .share_agent import ShareAgent
 from .upload_file import UploadFile
 
 __all__ = [
@@ -15,6 +16,7 @@ __all__ = [
     "UploadFile",
     "Agent",
     "Conversation",
+    "ShareAgent",
     "Server",
     "Message",
 ]

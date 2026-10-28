@@ -14,6 +14,7 @@ from .gateway_handler import GatewayHandler
 from .message_handler import MessageHandler
 from .oauth_handler import OAuthHandler
 from .server_handler import ServerHandler
+from .share_agent_handler import ShareAgentHandler
 from .upload_file_handler import UploadFileHandler
 
 __all__ = [
@@ -26,5 +27,6 @@ __all__ = [
     "ConversationHandler",
     "GatewayHandler",
     "MessageHandler",
+    "ShareAgentHandler",
     "ChatHandler",
 ]

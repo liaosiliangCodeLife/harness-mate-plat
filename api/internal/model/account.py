@@ -14,6 +14,7 @@ from sqlalchemy import (
     text,
     PrimaryKeyConstraint,
     Index,
+    SmallInteger,
 )
 
 from internal.extension.database_extension import db
@@ -32,6 +33,7 @@ class Account(UserMixin, db.Model):
     name = Column(String(255), nullable=False, server_default=text("''::character varying"))
     email = Column(String(255), nullable=False, server_default=text("''::character varying"))
     avatar = Column(String(255), nullable=False, server_default=text("''::character varying"))
+    is_guest = Column(SmallInteger, nullable=False, server_default=text("0"))  # 是否游客账号：0=普通注册用户 1=分享链接免登录访客
     password = Column(String(255), nullable=True, server_default=text("''::character varying"))
     password_salt = Column(String(255), nullable=True, server_default=text("''::character varying"))
     assistant_agent_conversation_id = Column(UUID, nullable=True)  # 辅助智能体会话id
