@@ -2,7 +2,7 @@
 
 Hermes Agent 的平台适配器：把本机 Hermes 接到 HarnessMate 平台，手机/浏览器即可与它对话。
 
-版本：`0.6.1`（`plugin.yaml`）｜协议：`hermes_channel_protocol.md`
+版本：`0.6.7`（`plugin.yaml`）｜协议：`hermes_channel_protocol.md`
 
 ---
 
@@ -68,8 +68,14 @@ HarnessMate 平台 ──HTTP/SSE──> Flask API ──HTTP──> Hub ──W
 | `HARNESS_MATE_ALLOW_ALL_DEVICES` | 否 | 开发用，放开全部 peer（生产别开） |
 | `HARNESS_MATE_DM_POLICY` | 否 | `open`（默认）/`allowlist`/`disabled` |
 | `HARNESS_MATE_UPLOAD_URL` | 否 | 上传接口地址，默认 `https://harness.alltman.com/api/open-api/upload-file` |
+| `HARNESS_MATE_API_BASE` | 否 | 平台 HTTP API 根（含 `/api`），审批轮询；默认 `https://harness.alltman.com/api` |
+| `HARNESS_MATE_INTERNAL_TOKEN` | 否 | 平台 `INTERNAL_TOKEN`；不填则审批只能靠对话 `/approve`，无法轮询决策 |
 
 网关地址在 `adapter.py` 顶部常量 `WS_GATEWAY_WS_URL`（形如 `wss://ws-agent.alltman.com:1443/ws`）。
+
+### 风险审批
+
+高危命令会发 `approval` 帧到平台「授权」页；配好 `HARNESS_MATE_INTERNAL_TOKEN` 后插件自动轮询决策并解阻塞。也可用对话 `/approve` / `/deny` 兜底。
 
 ## 五、安装与排障
 

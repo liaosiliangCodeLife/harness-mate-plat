@@ -8,13 +8,18 @@
 '''
 
 import asyncio
+import itertools
 import json
 import logging
 import os
+import re
 import time
 import uuid
 from typing import Any, Dict, List, Optional, Tuple
-from urllib.request import url2pathname
+from urllib.error import HTTPError, URLError
+from urllib.parse import urlencode
+from urllib.request import Request, url2pathname, urlopen
+import hashlib
 
 import jwt
 import websockets
@@ -29,6 +34,12 @@ try:
         resolve_upload_url,
         upload_open_api_file,
     )
+    from .approval import (
+        DEFAULT_APPROVAL_TIMEOUT_MS,
+        OPTION_TO_CHOICE,
+        build_approval_meta,
+        default_approval_options,
+    )
 except ImportError:  # 插件以单文件方式加载时走同目录导入
     from file_upload import (  # type: ignore
         OpenApiUploadError,
@@ -38,10 +49,17 @@ except ImportError:  # 插件以单文件方式加载时走同目录导入
         resolve_upload_url,
         upload_open_api_file,
     )
+    from approval import (  # type: ignore
+        DEFAULT_APPROVAL_TIMEOUT_MS,
+        OPTION_TO_CHOICE,
+        build_approval_meta,
+        default_approval_options,
+    )
 
 from gateway.config import Platform, PlatformConfig
 from gateway.platforms.base import (
     BasePlatformAdapter,
+    ExecApprovalPrompt,
     MessageEvent,
     MessageType,
     SendResult,
@@ -64,6 +82,9 @@ WS_GATEWAY_WS_URL = "wss://ws-agent.alltman.com:1443/ws"
 # harness_mate 业务层消息类型（放在网关 data 负载内，网关本身不解析）
 TYPE_MESSAGE = "message"
 TYPE_REPLY = "reply"
+
+DEFAULT_APPROVAL_TIMEOUT_SECONDS = 300
+DEFAULT_API_BASE = "https://harness.alltman.com/api"
 
 
 def _cfg_get(config, key: str, default: str = "") -> str:
@@ -257,10 +278,25 @@ class HarnessMateAdapter(BasePlatformAdapter):
         self._peer_by_device: Dict[str, str] = {}
         self._last_peer_session: str = ""
         self._last_thread_by_chat: Dict[str, str] = {}
+        # P3：房间会话键 room:<room_id> → {room_id, reply_to}
+        self._room_by_thread: Dict[str, Dict[str, str]] = {}
         self._reply_fingerprints: Dict[str, str] = {}
         self._typing_last_sent: Dict[Tuple[str, str], float] = {}
         self._typing_lock = asyncio.Lock()
+        # 审批：approval_id → {session_key, chat_id, thread_id, peer, timer}
+        self._approval_counter = itertools.count(1)
+        self._approval_state: Dict[str, Dict[str, Any]] = {}
         self.upload_url = resolve_upload_url(_cfg_get(config, "upload_url", ""))
+        self.api_base = (
+            _cfg_get(config, "api_base", "")
+            or os.getenv("HARNESS_MATE_API_BASE", "").strip()
+            or DEFAULT_API_BASE
+        ).rstrip("/")
+        self.internal_token = (
+            _cfg_get(config, "internal_token", "")
+            or os.getenv("HARNESS_MATE_INTERNAL_TOKEN", "").strip()
+        ).strip()
+        self._approval_poll_tasks: set = set()
 
         extra = getattr(config, "extra", None) or {}
         self._dm_policy = str(
@@ -590,13 +626,38 @@ class HarnessMateAdapter(BasePlatformAdapter):
                 logger.debug("harness_mate 对端未授权: %s", peer_session)
                 return
 
+            # ★ 审批决策：#approval <approval_id> <option_id>，命中后回调 Hermes resolver，不投给 agent
+            approval_match = re.match(
+                r"^#approval\s+(\S+)\s+(allow-once|reject-once)\s*$",
+                text.strip(),
+            )
+            if approval_match:
+                await self._handle_approval_decision(
+                    approval_match.group(1),
+                    approval_match.group(2),
+                )
+                return
+
             account_id = str(data.get("account_id") or self.bot_id).strip()
             thread_id = str(data.get("thread_id") or "").strip()
+            # P3：房间消息（平台按 target_agent_ids 下发时带 room_id + message_id）。
+            # 房间单独一个会话键 room:<room_id>，避免和私聊共用上下文
+            room_id = str(data.get("room_id") or nested.get("room_id") or "").strip()
+            room_reply_to = str(
+                data.get("message_id") or nested.get("message_id") or ""
+            ).strip()
+            if room_id:
+                thread_id = thread_id or f"room:{room_id}"
+                self._room_by_thread[thread_id] = {
+                    "room_id": room_id,
+                    "reply_to": room_reply_to,
+                }
             device_id = str(
                 data.get("from_device") or data.get("device_id") or peer_session
             ).strip()
             self._reply_targets[(account_id, thread_id)] = peer_session
-            if account_id and thread_id:
+            # 房间会话不写「最近线程」，否则会把私聊的兜底线程顶掉
+            if account_id and thread_id and not room_id:
                 self._last_thread_by_chat[account_id] = thread_id
             self._peer_by_device[device_id] = peer_session
             self._last_peer_session = peer_session
@@ -737,10 +798,34 @@ class HarnessMateAdapter(BasePlatformAdapter):
             reply_data["delta"] = True
         if is_final:
             reply_data["done"] = True
+            try:
+                from . import tool_trace as _tt
+                _steps = _tt.drain()
+            except Exception:
+                _steps = []
+            if _steps:
+                reply_data["agent_thoughts"] = _steps
         reasoning = metadata.get("reasoning")
         if reasoning:
             reply_data["reasoning"] = reasoning
         return reply_data
+
+    def _room_fields(self, thread_id: str) -> Dict[str, str]:
+        """
+        * @Author Leon-liao
+        * @Function: _room_fields(thread_id)
+        * @Description //房间会话的回包附加字段（room_id / reply_to），非房间会话返回空字典
+        * @Date :2026/10/29 16:25:00
+        * @Param: thread_id: 会话线程（房间为 room:<room_id>）
+        * @return：dict
+        """
+        room_ctx = self._room_by_thread.get(str(thread_id or ""))
+        if not room_ctx:
+            return {}
+        return {
+            "room_id": str(room_ctx.get("room_id") or ""),
+            "reply_to": str(room_ctx.get("reply_to") or ""),
+        }
 
     async def _send_reply(
         self,
@@ -795,8 +880,11 @@ class HarnessMateAdapter(BasePlatformAdapter):
             "type": TYPE_REPLY,
             "account_id": chat_id,
             "thread_id": thread_id,
+            "bot_id": self.bot_id,
             "data": reply_data,
         }
+        # P3：房间消息的回包必须带回 room_id + 原 message_id，平台才能归到房间
+        business_payload.update(self._room_fields(thread_id))
         ok = await self._send_ws(to_ws_session, business_payload)
         if not ok:
             return SendResult(success=False, error="ws send failed")
@@ -812,7 +900,315 @@ class HarnessMateAdapter(BasePlatformAdapter):
         )
         return SendResult(success=True, message_id=message_id)
 
+    def _approval_timeout_seconds(self) -> float:
+        """
+        * @Author Leon-liao
+        * @Function: _approval_timeout_seconds()
+        * @Description //读取 approvals.timeout，缺省 300 秒
+        * @Date :2026/10/29 21:01:51
+        * @Param: 无
+        * @return：超时秒数
+        """
+        try:
+            from tools.approval_context import _get_approval_timeout
+            return float(_get_approval_timeout())
+        except Exception:
+            env_ms = os.getenv("HARNESS_MATE_APPROVAL_TIMEOUT_MS", "").strip()
+            if env_ms:
+                try:
+                    return max(float(env_ms) / 1000.0, 1.0)
+                except ValueError:
+                    pass
+            return float(DEFAULT_APPROVAL_TIMEOUT_SECONDS)
+
+    def _lookup_approval_status(self, client_id: str) -> Optional[int]:
+        """
+        * @Author Leon-liao
+        * @Function: _lookup_approval_status(client_id)
+        * @Description //同步查询平台审批状态；网络错误返回 None
+        * @Date :2026/10/29 21:01:51
+        * @Param: client_id: 插件侧 client_approval_id
+        * @return：status 整数；未就绪或失败返回 None
+        """
+        token = str(self.internal_token or "").strip()
+        if not token:
+            return None
+        query = urlencode({
+            "bot_id": self.bot_id or "",
+            "client_approval_id": client_id,
+        })
+        url = f"{self.api_base}/internal/approvals/lookup?{query}"
+        req = Request(
+            url,
+            headers={"X-Internal-Token": token},
+            method="GET",
+        )
+        try:
+            with urlopen(req, timeout=5) as resp:
+                raw_body = resp.read()
+        except (HTTPError, URLError, TimeoutError, OSError) as exc:
+            logger.debug("harness_mate 审批轮询暂失败: %s", exc)
+            return None
+        try:
+            parsed = json.loads(raw_body.decode("utf-8", errors="replace"))
+        except json.JSONDecodeError:
+            return None
+        if not isinstance(parsed, dict) or parsed.get("code") != "success":
+            return None
+        data = parsed.get("data")
+        if not isinstance(data, dict):
+            return None
+        status = data.get("status")
+        if status is None:
+            return None
+        try:
+            return int(status)
+        except (TypeError, ValueError):
+            return None
+
+    def _format_approval_fallback_text(self, prompt: ExecApprovalPrompt) -> str:
+        """
+        * @Author Leon-liao
+        * @Function: _format_approval_fallback_text(prompt)
+        * @Description //拼装审批兜底文本（平台授权页 + /approve）
+        * @Date :2026/10/29 21:01:51
+        * @Param: prompt: ExecApprovalPrompt
+        * @return：文本内容
+        """
+        command = str(getattr(prompt, "command", "") or "")
+        first_line = command.strip().splitlines()[0] if command.strip() else "需要执行的命令"
+        description = str(getattr(prompt, "description", "") or "").strip()
+        lines = ["⚠️ 需要授权：%s" % first_line]
+        if description:
+            lines.append(description)
+        lines.append("")
+        lines.append("在平台左侧「授权」页点「允许一次」；也可以在本对话直接回复 /approve 或 /deny")
+        return "\n".join(lines)
+
+    async def _poll_approval(self, client_id: str, session_key: str) -> None:
+        """
+        * @Author Leon-liao
+        * @Function: _poll_approval(client_id, session_key)
+        * @Description //后台轮询平台 lookup，拿到决策后调用 resolve_gateway_approval 解阻塞
+        * @Date :2026/10/29 21:01:51
+        * @Param: client_id: 客户端审批 id；session_key: Hermes 审批会话键
+        * @return：无
+        """
+        del session_key
+        timeout_s = self._approval_timeout_seconds()
+        deadline = time.monotonic() + timeout_s
+        token = str(self.internal_token or "").strip()
+        if not token:
+            logger.info(
+                "harness_mate 未配置 HARNESS_MATE_INTERNAL_TOKEN，审批仅靠 /approve 或 #approval"
+            )
+            return
+
+        while time.monotonic() < deadline:
+            if client_id not in self._approval_state:
+                return
+            status = await asyncio.to_thread(self._lookup_approval_status, client_id)
+            if status == 1:
+                await self._finalize_approval(client_id, "once", reason=None)
+                return
+            if status in (2, 3):
+                reason = "平台拒绝" if status == 2 else "平台超时"
+                await self._finalize_approval(client_id, "deny", reason=reason)
+                return
+            await asyncio.sleep(2.0)
+
+        if client_id in self._approval_state:
+            await self._finalize_approval(client_id, "deny", reason="平台超时")
+
+    async def _finalize_approval(
+        self,
+        approval_id: str,
+        choice: str,
+        *,
+        reason: Optional[str] = None,
+    ) -> None:
+        """
+        * @Author Leon-liao
+        * @Function: _finalize_approval(approval_id, choice, reason)
+        * @Description //统一解阻塞：取消定时器、清状态、调用 resolve_gateway_approval
+        * @Date :2026/10/29 21:01:51
+        * @Param: approval_id: 客户端审批 id；choice: once/deny；reason: 拒绝原因
+        * @return：无
+        """
+        state = self._approval_state.pop(approval_id, None)
+        if not state:
+            return
+        timer = state.get("timer")
+        if timer is not None:
+            try:
+                timer.cancel()
+            except Exception:
+                pass
+        session_key = str(state.get("session_key") or "")
+        if not session_key:
+            return
+        try:
+            from tools.approval import resolve_gateway_approval
+            count = resolve_gateway_approval(session_key, choice, reason=reason)
+            logger.info(
+                "harness_mate 审批已解阻塞: id=%s choice=%s resolved=%d reason=%s",
+                approval_id,
+                choice,
+                count,
+                reason,
+            )
+        except Exception:
+            logger.exception(
+                "harness_mate 回调 resolve_gateway_approval 失败: id=%s",
+                approval_id,
+            )
+
+    async def _send_exec_approval_prompt(self, prompt: ExecApprovalPrompt) -> SendResult:
+        """
+        * @Author Leon-liao
+        * @Function: _send_exec_approval_prompt(prompt)
+        * @Description //发 approval 帧 + 文本兜底，并后台轮询平台 lookup 拿决策
+        * @Date :2026/10/29 21:01:51
+        * @Param: prompt: ExecApprovalPrompt
+        * @return：SendResult(success=True)
+        """
+        client_id = "hermes-%s" % uuid.uuid4().hex[:12]
+        chat_id = str(getattr(prompt, "chat_id", "") or "").strip()
+        session_key = str(getattr(prompt, "session_key", "") or "").strip()
+        metadata = getattr(prompt, "metadata", None) or {}
+        if not isinstance(metadata, dict):
+            metadata = {}
+
+        thread_id, to_ws_session = self._resolve_target(chat_id, metadata)
+        command = str(getattr(prompt, "command", "") or "")
+        title = command[:120] if command.strip() else "需要执行的命令"
+        action = "exec.shell"
+        risk_level = "high" if bool(getattr(prompt, "smart_denied", False)) else "medium"
+        digest = hashlib.sha256(command.encode("utf-8")).hexdigest()
+        options = [
+            {"option_id": "allow-once", "kind": "allow_once", "name": "允许一次"},
+            {"option_id": "reject-once", "kind": "reject_once", "name": "拒绝"},
+        ]
+        try:
+            meta = build_approval_meta(
+                command=command,
+                description=str(getattr(prompt, "description", "") or ""),
+            )
+            title = str(meta.get("title") or title)
+            action = str(meta.get("action") or action)
+            raw_risk = meta.get("risk_level")
+            if isinstance(raw_risk, int) or (isinstance(raw_risk, str) and str(raw_risk).isdigit()):
+                risk_level = {"0": "low", "1": "low", "2": "medium", "3": "high"}.get(
+                    str(int(raw_risk)), risk_level
+                )
+            elif raw_risk:
+                risk_level = str(raw_risk)
+            if meta.get("payload_digest"):
+                digest = str(meta["payload_digest"])
+            options = default_approval_options()
+        except Exception:
+            logger.debug("harness_mate build_approval_meta 失败，使用默认审批字段", exc_info=True)
+
+        expires_in_ms = int(self._approval_timeout_seconds() * 1000)
+        approval_payload = {
+            "type": TYPE_REPLY,
+            "account_id": chat_id,
+            "thread_id": thread_id,
+            "bot_id": self.bot_id,
+            "data": {
+                "approval": {
+                    "approval_id": client_id,
+                    "title": title,
+                    "action": action,
+                    "risk_level": risk_level,
+                    "payload_digest": digest,
+                    "options": options,
+                    "expires_in_ms": expires_in_ms,
+                }
+            },
+        }
+        approval_payload.update(self._room_fields(thread_id))
+
+        if to_ws_session and self._ws is not None:
+            ok = await self._send_ws(to_ws_session, approval_payload)
+            if not ok:
+                logger.warning(
+                    "harness_mate 审批帧发送失败: peer=%s client_id=%s",
+                    to_ws_session,
+                    client_id,
+                )
+        else:
+            logger.warning(
+                "harness_mate 审批帧无法发送: chat=%s thread=%s peer=%s connected=%s",
+                chat_id,
+                thread_id,
+                to_ws_session,
+                self._ws is not None,
+            )
+
+        try:
+            await self.send(
+                chat_id,
+                self._format_approval_fallback_text(prompt),
+                metadata=metadata,
+            )
+        except Exception:
+            logger.exception("harness_mate 审批兜底文本发送失败")
+
+        loop = asyncio.get_running_loop()
+        timer = loop.call_later(
+            max(expires_in_ms, 1000) / 1000.0,
+            lambda: asyncio.create_task(
+                self._finalize_approval(client_id, "deny", reason="本地超时")
+            ),
+        )
+        self._approval_state[client_id] = {
+            "session_key": session_key,
+            "chat_id": chat_id,
+            "thread_id": thread_id,
+            "peer": to_ws_session,
+            "timer": timer,
+        }
+
+        if session_key:
+            task = asyncio.create_task(self._poll_approval(client_id, session_key))
+            self._approval_poll_tasks.add(task)
+            task.add_done_callback(self._approval_poll_tasks.discard)
+
+        logger.info(
+            "harness_mate 已发起风险审批: client_id=%s chat=%s thread=%s peer=%s",
+            client_id,
+            chat_id,
+            thread_id,
+            to_ws_session,
+        )
+        return SendResult(success=True, message_id=client_id)
+
+    async def _handle_approval_decision(
+        self,
+        approval_id: str,
+        option_id: str,
+        *,
+        timed_out: bool = False,
+    ) -> None:
+        """
+        * @Author Leon-liao
+        * @Function: _handle_approval_decision(approval_id, option_id, timed_out)
+        * @Description //处理 App #approval 回执或本地超时，回调 resolve_gateway_approval
+        * @Date :2026/10/29 21:01:51
+        * @Param: approval_id: 审批 ID；option_id: allow-once|reject-once；timed_out: 是否超时拒绝
+        * @return：无
+        """
+        choice = OPTION_TO_CHOICE.get(option_id, "deny")
+        if timed_out:
+            choice = "deny"
+            reason = "本地超时"
+        else:
+            reason = None if choice == "once" else "用户拒绝"
+        await self._finalize_approval(approval_id, choice, reason=reason)
+
     async def _send_ws(self, to: str, data: Dict[str, Any]) -> bool:
+
         """
         * @Author Leon-liao
         * @Function: _send_ws(to, data)
@@ -878,6 +1274,14 @@ class HarnessMateAdapter(BasePlatformAdapter):
             "url": url,
             "file_name": file_name,
             "media_type": media_type,
+            "files": [
+                {
+                    "url": url,
+                    "name": file_name or "",
+                    "media_kind": media_type,
+                    "is_image": media_type == "image",
+                }
+            ],
         }
         fingerprint = json.dumps(reply_data, ensure_ascii=False, sort_keys=True)
         cache_key = f"{to_ws_session}:{thread_id}:{message_id}:file"
@@ -885,15 +1289,15 @@ class HarnessMateAdapter(BasePlatformAdapter):
             return SendResult(success=True, message_id=message_id)
         self._reply_fingerprints[cache_key] = fingerprint
 
-        ok = await self._send_ws(
-            to_ws_session,
-            {
-                "type": TYPE_REPLY,
-                "account_id": chat_id,
-                "thread_id": thread_id,
-                "data": reply_data,
-            },
-        )
+        file_payload = {
+            "type": TYPE_REPLY,
+            "account_id": chat_id,
+            "thread_id": thread_id,
+            "bot_id": self.bot_id,
+            "data": reply_data,
+        }
+        file_payload.update(self._room_fields(thread_id))
+        ok = await self._send_ws(to_ws_session, file_payload)
         if not ok:
             return SendResult(success=False, error="ws send failed", retryable=True)
         self._reset_typing_throttle(to_ws_session, thread_id)
@@ -932,8 +1336,10 @@ class HarnessMateAdapter(BasePlatformAdapter):
         display_name = str(file_name or "").strip() or os.path.basename(str(file_path or ""))
         kind = media_type if media_type in {"image", "audio", "video", "file"} else media_kind_for_name(display_name)
         message_id = str(metadata.get("message_id") or uuid.uuid4())
+        room_id = str(self._room_fields(thread_id).get("room_id") or "").strip()
         try:
-            # 上传接口按 conversation.thread_id 校验会话归属，必须传 td-xxx，不能传 peer 的 ws_session_id
+            # 上传接口按 conversation.thread_id 校验会话归属，必须传 td-xxx，不能传 peer 的 ws_session_id；
+            # 房间会话无 conversation，额外透传 room_id 供后端按房间成员兜底
             url = await asyncio.to_thread(
                 upload_open_api_file,
                 file_path,
@@ -941,6 +1347,7 @@ class HarnessMateAdapter(BasePlatformAdapter):
                 self.bot_key,
                 thread_id,
                 self.upload_url,
+                room_id=room_id,
             )
         except OpenApiUploadError as exc:
             logger.warning("harness_mate 文件上传失败: %s", exc.message)
@@ -1436,6 +1843,48 @@ def _patch_harness_mate_thread_metadata() -> None:
         logger.debug("harness_mate 跳过 GatewayRunner 线程元数据补丁", exc_info=True)
 
     globals()["_HARNESS_MATE_THREAD_METADATA_PATCHED"] = True
+
+    try:
+        import sys as _sys2
+        _gw_agent_mod = _sys2.modules.get("hermes_cli.gateway_agent")
+        _GatewayAgent = getattr(_gw_agent_mod, "GatewayAgent", None) if _gw_agent_mod else None
+        if _GatewayAgent is None:
+            logger.debug("harness_mate 跳过工具事件补丁 (hermes_cli.gateway_agent 未加载)")
+        elif not getattr(_GatewayAgent, "_hm_tool_trace_patched", False):
+            from . import tool_trace as _tool_trace
+
+            _orig_on_tool_start = _GatewayAgent._on_tool_start
+            _orig_on_tool_complete = _GatewayAgent._on_tool_complete
+
+            def _hm_on_tool_start(self, payload, stream_callback, starts):
+                try:
+                    name = payload.get("name") or payload.get("tool_name") or "tool"
+                    args = payload.get("args") if isinstance(payload.get("args"), dict) else {}
+                    call_id = payload.get("tool_id") or payload.get("tool_call_id") or ""
+                    _tool_trace.record_start(str(call_id), str(name), args)
+                except Exception:
+                    logger.debug("harness_mate 记录工具开始失败", exc_info=True)
+                return _orig_on_tool_start(self, payload, stream_callback, starts)
+
+            def _hm_on_tool_complete(self, payload, stream_callback, starts):
+                try:
+                    name = payload.get("name") or payload.get("tool_name") or "tool"
+                    call_id = payload.get("tool_id") or payload.get("tool_call_id") or ""
+                    duration = float(payload.get("duration_s") or 0.0)
+                    _tool_trace.record_complete(
+                        str(call_id), str(name), duration,
+                        bool(payload.get("is_error")), payload.get("result"),
+                    )
+                except Exception:
+                    logger.debug("harness_mate 记录工具完成失败", exc_info=True)
+                return _orig_on_tool_complete(self, payload, stream_callback, starts)
+
+            _GatewayAgent._on_tool_start = _hm_on_tool_start
+            _GatewayAgent._on_tool_complete = _hm_on_tool_complete
+            _GatewayAgent._hm_tool_trace_patched = True
+            globals()["_HARNESS_MATE_TOOL_TRACE_PATCHED"] = True
+    except Exception:
+        logger.debug("harness_mate 跳过工具事件补丁", exc_info=True)
 
 
 def register(ctx) -> None:

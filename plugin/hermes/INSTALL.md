@@ -10,7 +10,7 @@
 
 ```bash
 # 1) 安装（自动装依赖并启用；插件在仓库的 plugin/hermes/ 子目录里）
-hermes plugins install liaosiliangCodeLife/harness-mate-plat/plugin/hermes --yes-deps --enable
+hermes plugins install liaosiliangCodeLife/harness-mate-hermes --yes-deps --enable
 
 # 2) 填身份：把 <...> 换成平台侧给你的值
 cat >> ~/.hermes/.env <<'EOF'
@@ -43,7 +43,7 @@ hermes gateway restart        # 重启后插件才会连上网关
 ### 方式 A（推荐）：一条命令
 
 ```bash
-hermes plugins install liaosiliangCodeLife/harness-mate-plat/plugin/hermes --yes-deps --enable
+hermes plugins install liaosiliangCodeLife/harness-mate-hermes --yes-deps --enable
 ```
 
 - 插件在仓库的 `plugin/hermes/` 子目录，Hermes 支持 `owner/repo/子目录` 写法（也接受 `https://github.com/owner/repo.git/plugin/hermes` 或 `owner/repo#plugin/hermes`）。
@@ -58,7 +58,7 @@ hermes plugins install liaosiliangCodeLife/harness-mate-plat/plugin/hermes --yes
 ```bash
 git clone https://github.com/liaosiliangCodeLife/harness-mate-plat.git
 mkdir -p ~/.hermes/plugins
-cp -R harness-mate-plat/plugin/hermes ~/.hermes/plugins/HarnessMate
+cp -R harness-mate-hermes ~/.hermes/plugins/HarnessMate
 hermes plugins adopt ~/.hermes/plugins/HarnessMate    # 可选：纳入安装来源跟踪
 hermes plugins enable HarnessMate
 ```
@@ -128,10 +128,22 @@ config:
 | `upload_url` | `HARNESS_MATE_UPLOAD_URL` | `https://harness.alltman.com/api/open-api/upload-file` | Agent 回传本机文件时上传到的平台接口；自部署改成自己的域名 |
 | `dm_policy` | `HARNESS_MATE_DM_POLICY` | `open` | 谁能给它发消息：`open` / `allowlist` / `disabled` |
 | `allow_from` | `HARNESS_MATE_ALLOWED_PEERS`（旧名 `HARNESS_MATE_ALLOWED_DEVICES`） | 空 | 白名单 peer 的 `ws_session_id`，支持 `*` 通配 |
+| `api_base` | `HARNESS_MATE_API_BASE` | `https://harness.alltman.com/api` | 平台 HTTP API 根（含 `/api`），审批轮询用 |
+| `internal_token` | `HARNESS_MATE_INTERNAL_TOKEN` | 空 | 与平台 `INTERNAL_TOKEN` 一致；不填则无法轮询审批决策，只能对话回复 `/approve` |
 | — | `HARNESS_MATE_ALLOW_ALL_DEVICES` | 空 | 调试用：放行全部 peer |
 | — | `HARNESS_MATE_PING_INTERVAL` / `HARNESS_MATE_PING_TIMEOUT` | 50 / 90 | WS 心跳间隔与超时（秒） |
 | — | `HARNESS_MATE_RECONNECT_MIN_DELAY` / `_MAX_DELAY` | 1 / 30 | 断线重连退避（秒） |
 | — | `HARNESS_MATE_TYPING_INTERVAL` | 8 | 「正在输入」节流（秒） |
+
+### 4.4 风险审批
+
+Hermes 执行高危命令时，插件会：
+
+1. 发一帧 `data.approval`（网关异步上报平台，左侧「授权」页可见）；
+2. 同时发一条文本兜底，提示去授权页，或在本对话回复 `/approve` / `/deny`；
+3. 若配置了 `HARNESS_MATE_INTERNAL_TOKEN`，后台每 2 秒轮询 `GET /internal/approvals/lookup`，拿到通过/拒绝后调用 `resolve_gateway_approval` 解阻塞。
+
+未配 `INTERNAL_TOKEN` 时仍可发审批帧与文本，但只能靠对话 `/approve`（或 App 回 `#approval`）解阻塞。
 
 ---
 
@@ -158,7 +170,7 @@ hermes plugins show HarnessMate               # 期望 required env 不再是「
 **② 插件能被 Hermes 正常加载**（对目录跑同样可以，适合装前自检）
 
 ```bash
-hermes plugins doctor /path/to/harness-mate-plat/plugin/hermes
+hermes plugins doctor /path/to/harness-mate-hermes
 # 期望输出：OK: runtime discovery, manifest parsing, import, and registration passed
 ```
 

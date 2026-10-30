@@ -1,7 +1,7 @@
 name: HarnessMate
 label: HarnessMate
 kind: platform
-version: 0.6.2
+version: 0.6.7
 description: Go WS Gateway adapter for Hermes Agent (/ws endpoint, ws_session_id P2P). Configure bot_id + bot_key only for gateway connection.
 author: harness_mate
 requires_env:
@@ -34,9 +34,19 @@ optional_env:
     description: Upload API host or full URL. Default https://harness.alltman.com/api/open-api/upload-file
     prompt: Upload URL
     password: false
+  - name: HARNESS_MATE_API_BASE
+    description: Platform HTTP API root (incl. /api). Default https://harness.alltman.com/api
+    prompt: API Base
+    password: false
+  - name: HARNESS_MATE_INTERNAL_TOKEN
+    description: 平台 INTERNAL_TOKEN，用于审批决策轮询；不填则只能用 /approve 回复
+    prompt: Internal Token
+    password: true
 config:
   bot_id: ""
   bot_key: ""
   upload_url: ""
+  api_base: ""
+  internal_token: ""
   dm_policy: open
   allow_from: []

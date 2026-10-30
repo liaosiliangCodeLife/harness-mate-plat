@@ -11,7 +11,6 @@
 import argparse
 import asyncio
 import json
-import os
 import sys
 import time
 from typing import Any
@@ -43,7 +42,7 @@ PROMPT = "App> "
 DEFAULT_GATEWAY_HOST = "ws-agent.alltman.com"
 DEFAULT_GATEWAY_PORT = "1443"
 DEFAULT_GATEWAY_SCHEME = "wss"
-DEFAULT_JWT_SECRET = os.environ.get("WS_GATEWAY_JWT_SECRET", "")
+DEFAULT_JWT_SECRET = "gwASVdQIW8vDJJ3Z"
 DEFAULT_GATEWAY_WS_PATH = "/ws"
 
 

@@ -44,6 +44,7 @@ _UPLOAD_RETRY_DELAYS = (0.5, 1.5, 3.0)
 class OpenApiUploadError(Exception):
     """免授权上传失败。"""
 
+
     def __init__(self, message: str, *, retryable: bool = False):
         """
         * @Author Leon-liao
@@ -361,33 +362,41 @@ def upload_open_api_file(
     file_path: str,
     bot_id: str,
     bot_key: str,
-    session_id: str,
+    thread_id: str,
     upload_url: str = "",
     timeout: Optional[float] = None,
+    room_id: str = "",
 ) -> str:
     """
     * @Author Leon-liao
-    * @Function: upload_open_api_file(file_path, bot_id, bot_key, session_id, upload_url, timeout)
-    * @Description //用智能体标识、网关密钥和会话标识把本地文件上传到对象存储。连接被对端断开这类网络失败会自动重试，服务端业务错误不重试
+    * @Function: upload_open_api_file(file_path, bot_id, bot_key, thread_id, upload_url, timeout, room_id)
+    * @Description //用智能体标识、网关密钥和会话线程标识把本地文件上传到对象存储。连接被对端断开这类网络失败会自动重试，服务端业务错误不重试。房间消息可额外传 room_id，供后端在无 conversation 时兜底校验房间成员身份
     * @Date :2026/10/08 22:08:00
-    * @Param: file_path: 本地文件；bot_id: 智能体业务标识；bot_key: 网关密钥；session_id: 会话 ws_session_id；upload_url: 上传地址；timeout: 超时秒数
+    * @Param: file_path: 本地文件；bot_id: 智能体业务标识；bot_key: 网关密钥；thread_id: 会话线程标识；upload_url: 上传地址；timeout: 超时秒数；room_id: 可选房间主键，房间上传时透传
     * @return：上传后的可访问 URL
     """
     bot_id = str(bot_id or "").strip()
     bot_key = str(bot_key or "").strip()
-    session_id = str(session_id or "").strip()
+    thread_id = str(thread_id or "").strip()
+    room_id = str(room_id or "").strip()
     if not bot_id:
         raise OpenApiUploadError("bot_id 不能为空")
     if not bot_key:
         raise OpenApiUploadError("bot_key 不能为空")
-    if not session_id:
-        raise OpenApiUploadError("session_id 不能为空")
+    if not thread_id:
+        raise OpenApiUploadError("thread_id 不能为空")
 
     filename, local_path, _size, content_type = prepare_upload_file(file_path)
     body_path = ""
     try:
         body_path, boundary, content_length = _write_multipart_file(
-            {"bot_id": bot_id, "bot_key": bot_key, "session_id": session_id},
+            {
+                "bot_id": bot_id,
+                "bot_key": bot_key,
+                "session_id": thread_id,
+                "thread_id": thread_id,
+                "room_id": room_id,
+            },
             filename,
             local_path,
             content_type,
